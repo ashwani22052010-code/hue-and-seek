@@ -1,0 +1,49 @@
+@import '@fontsource/fredoka/400.css';
+@import '@fontsource/fredoka/500.css';
+@import '@fontsource/fredoka/600.css';
+@import '@fontsource/fredoka/700.css';
+@import '@fontsource/nunito/400.css';
+@import '@fontsource/nunito/700.css';
+@import '@fontsource/nunito/800.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+body {
+  font-family: Nunito, system-ui, sans-serif;
+  background: #2e1065;
+  color: #1e1b4b;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+canvas { touch-action: none; display: block; }
+
+.game-bg {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(244, 114, 182, 0.55), transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.45), transparent 40%),
+    radial-gradient(circle at 70% 85%, rgba(250, 204, 21, 0.35), transparent 45%),
+    linear-gradient(135deg, #4c1d95 0%, #6d28d9 45%, #db2777 100%);
+}
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(2px);
+  opacity: 0.55;
+  animation: floaty 7s ease-in-out infinite;
+}
+.text-outline {
+  -webkit-text-stroke: 2px #1e1b4b;
+  paint-order: stroke fill;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+input[type='range'] { accent-color: #8b5cf6; }
+.safe-b { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+.hue-slider { background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }

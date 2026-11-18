@@ -1,0 +1,21 @@
+{
+  "name": "hue-and-seek",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hue & Seek - an original 3D online multiplayer camouflage hide & seek game",
+  "workspaces": ["shared", "server", "client"],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c magenta,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p client --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/multiplayer.e2e.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": { "node": ">=20" }
+}
