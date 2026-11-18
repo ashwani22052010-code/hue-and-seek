@@ -8,6 +8,7 @@ wood/stone/fabric patterns, strike a pose — and then freeze. Seekers have to s
 - Server-authoritative realtime multiplayer (Socket.IO), reconnection to running matches
 - 5 original maps, 5 game modes, 9 abilities (+2 chaos bonus powers)
 - Real paint system on a per-player texture atlas (brush, fills, patterns, undo/redo, presets)
+- **Voice chat** in private rooms (WebRTC): mic on/off, choose who hears you (everyone / your team / picked players), mute anyone
 - Accounts without personal data, XP/levels, coins, shop, daily missions, achievements,
   global + friends leaderboards, friends, invites, recent players, profiles, preset quick-chat
 - PostgreSQL persistence (embedded PGlite fallback for zero-config local dev)
@@ -67,6 +68,17 @@ In the paint studio: drag on yourself to paint, drag elsewhere (or right-drag) t
 
 **Mobile controls:** left joystick to move, drag anywhere on the right to look, tap the world to poke
 (seeker), Jump / Sprint / Poke buttons, ability buttons on the right, paint studio as a bottom sheet.
+
+### Voice chat
+Open **🎧 Voice** in the lobby or in-game (V toggles the mic on desktop).
+- **Voice chat on/off** joins the channel to listen; the microphone is only requested when you turn the mic on.
+- **Who hears me?** *Everyone*, *My team* (only your team during a round, everyone in the lobby), or *Choose*
+  (tick players). Your mic track is only sent to those players, so nobody else receives your audio.
+- **🔈 Hear / 🔇 Muted** per player controls whom you hear. A voice volume slider is in Settings.
+- Only in private rooms. Players who have been caught can only talk to other caught players until the round ends.
+- Audio is peer-to-peer; the server only relays connection setup. Most Wi-Fi/mobile networks work with the
+  default STUN servers. If some players can't connect (strict mobile networks), add a TURN server via
+  `VOICE_TURN_URL`, `VOICE_TURN_USERNAME`, `VOICE_TURN_CREDENTIAL` (see `.env.example`).
 
 ### Game modes
 1. **Classic** — seekers must find every hider before the timer ends.
@@ -168,6 +180,7 @@ npm test                    # unit tests: physics, map spawns/colliders, rules, 
 npm run test:integration    # 2 real socket clients play a full match (rooms, anti-cheat, tagging, DB rewards,
                             # reconnection, host tools, matchmaking, friends, shop)
 npm run test:modes          # Infection, Everyone Hides, Team Battle, Chaos + every ability, decoys, interactables
+node e2e/voice.e2e.mjs      # 3 browsers with fake mics: real WebRTC audio + who-hears-me routing
 npm run test:e2e            # builds the client, then 2 headless Chromium clients + 1 emulated iPhone play in the browser
 npm run gallery             # screenshots of every screen and map into e2e/screenshots/gallery
 npm run typecheck

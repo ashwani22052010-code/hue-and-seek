@@ -214,6 +214,31 @@ export function attachSockets(io: Server, rooms: RoomManager) {
       room()?.emitAll('event', { type: 'chat', playerId: pid, msg: d.msg });
     });
 
+    // ---------- voice chat (WebRTC signalling relay; audio flows peer-to-peer) ----------
+    socket.on('voice:state', (d, a) => {
+      const ack = ackOf(a);
+      if (!limit('misc') || !isObj(d)) return ack({ ok: false, error: 'Slow down' });
+      const r = room(), p = me();
+      if (!r || !p) return ack({ ok: false, error: 'Join a room first' });
+      const on = d.on === true;
+      if (on && r.isPublic) return ack({ ok: false, error: 'Voice chat is only available in private rooms' });
+      p.voiceOn = on;
+      p.micOn = on && d.mic === true;
+      r.markDirty();
+      ack({ ok: true });
+    });
+
+    socket.on('voice:signal', (d) => {
+      if (!limit('voice') || !isObj(d)) return;
+      const to = str(d.to, 64);
+      const r = room(), p = me();
+      if (!to || !r || !p || !p.voiceOn || r.isPublic) return;
+      const target = r.players.get(to);
+      if (!target || !target.voiceOn || target.id === pid) return;
+      if (!isObj(d.data) || JSON.stringify(d.data).length > 16_000) return;
+      r.emitPlayer(target, 'voice:signal', { from: pid, data: d.data });
+    });
+
     socket.on('friend:invite', async (d, a) => {
       const ack = ackOf(a);
       if (!limit('misc') || !isObj(d)) return ack({ ok: false, error: 'Slow down' });

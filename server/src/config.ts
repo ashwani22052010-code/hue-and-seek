@@ -15,4 +15,9 @@ export const config = {
   timerScale: num(process.env.TIMER_SCALE, process.env.FAST_TIMERS === 'true' ? 0.25 : 1),
   sessionDays: num(process.env.SESSION_DAYS, 60),
   trustProxy: process.env.TRUST_PROXY === 'true',
+  /** Voice chat (WebRTC). STUN works for most networks; add a TURN server for strict mobile networks. */
+  voiceStun: (process.env.VOICE_STUN_URLS ?? 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302').split(',').map((s) => s.trim()).filter(Boolean),
+  voiceTurnUrl: process.env.VOICE_TURN_URL ?? '',
+  voiceTurnUsername: process.env.VOICE_TURN_USERNAME ?? '',
+  voiceTurnCredential: process.env.VOICE_TURN_CREDENTIAL ?? '',
 };

@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:integration": "node e2e/server.integration.mjs",
     "test:modes": "node e2e/modes.integration.mjs",
+    "test:voice": "node e2e/voice.e2e.mjs",
     "test:e2e": "npm run build -w client && node e2e/multiplayer.e2e.mjs",
     "test:all": "npm test && npm run test:integration && npm run test:modes && npm run test:e2e",
     "gallery": "node e2e/gallery.mjs"

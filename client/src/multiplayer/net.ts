@@ -8,6 +8,11 @@ import { sfx, playMusic } from '../audio/sound';
 import { refreshProfile, saveToken } from './api';
 import { fx } from '../game/fxBus';
 import { registry } from '../game/registry';
+import { voice } from './voice';
+
+voice.bind((ev, data) => emit(ev, data), (ev, data) => request(ev, data));
+// leaving a room (any way) ends voice chat
+useStore.subscribe((s, p) => { if (p.room && !s.room && voice.enabled) voice.disable(false); });
 
 let socket: Socket | null = null;
 type Ack = { ok: boolean; error?: string; code?: string; [k: string]: unknown };
@@ -109,6 +114,7 @@ export function connect(token: string) {
 
   s.on('room:joined', (j: { code: string; reconnected?: boolean }) => {
     st().set({ mmStatus: null });
+    if (j.reconnected) voice.resume();
     if (j.reconnected) st().toast('Reconnected to your match!', 'good');
   });
 
@@ -117,6 +123,7 @@ export function connect(token: string) {
     const sample = room.serverNow - Date.now();
     if (!offsetInit) { offset = sample; offsetInit = true; }
     st().set({ room, clockOffset: offset });
+    voice.sync(room);
     const screen = st().screen;
     if (room.phase !== 'lobby' && prevPhase !== room.phase) onPhaseChange(room, prevPhase);
     if (room.phase === 'lobby' && screen === 'game') st().go('lobby');
@@ -142,6 +149,7 @@ export function connect(token: string) {
   });
   s.on('correct', (d: { p: Vec3 }) => spawnCbs.forEach((cb) => cb(d.p)));
 
+  s.on('voice:signal', (m: { from: string; data: Record<string, never> }) => void voice.handleSignal(m.from, m.data));
   s.on('paint', (m: PaintMsg & { pid: string }) => paintFor(m.pid).apply(m));
   s.on('paint:full', (m: { paints: Record<string, PaintOp[]> }) => resetAllPaint(m.paints));
   s.on('decoys', (d: DecoyState[]) => st().set({ decoys: d }));

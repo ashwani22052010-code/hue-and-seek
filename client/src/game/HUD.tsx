@@ -14,6 +14,7 @@ import { loadPreset } from '../characters/paint';
 import { sfx } from '../audio/sound';
 import { isSpectating } from './LocalPlayer';
 import { SettingsBody } from '../screens/Settings';
+import { VoiceBar } from '../ui/Voice';
 
 const useNow = (ms = 250) => {
   const [now, setNow] = useState(serverClock());
@@ -221,7 +222,7 @@ function PauseMenu() {
             <Btn tone="mint" size="lg" onClick={() => set({ pauseOpen: false })}>Resume</Btn>
             <Btn tone="sky" onClick={() => setSettings(true)}>Settings</Btn>
             <div className="rounded-2xl bg-indigo-50 p-3 text-xs leading-relaxed">
-              <b>Controls:</b> WASD move · Mouse look · Space jump · Shift sprint · E interact · P paint (prep) · 1-5 abilities · Click/F poke (seeker) · C pose · T chat · G emote · Q switch spectate · Esc pause
+              <b>Controls:</b> V mic on/off · WASD move · Mouse look · Space jump · Shift sprint · E interact · P paint (prep) · 1-5 abilities · Click/F poke (seeker) · C pose · T chat · G emote · Q switch spectate · Esc pause
             </div>
             <Btn tone="danger" onClick={async () => { await request('room:leave'); set({ room: null, pauseOpen: false }); go('menu'); }}>Leave Match</Btn>
           </div>
@@ -432,6 +433,7 @@ export function HUD({ def }: { def: MapDef | null }) {
           <button onClick={() => s.set({ quickMenu: s.quickMenu === 'emote' ? 'none' : 'emote' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Emotes">😄</button>
           {canPose && <button onClick={() => s.set({ quickMenu: s.quickMenu === 'pose' ? 'none' : 'pose' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Pose">🤸</button>}
           {spectating && <button onClick={() => s.set({ spectateIdx: s.spectateIdx + 1 })} className="h-11 rounded-full bg-white/85 px-3 text-sm font-bold shadow">Next view ▶</button>}
+          {!room.isPublic && <VoiceBar vertical={touch} />}
         </div>
       )}
       <QuickMenus />

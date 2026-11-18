@@ -11,6 +11,7 @@ export interface Settings {
   music: number;
   sfx: number;
   ui: number;
+  voice: number;
   quality: 'low' | 'high';
   sensitivity: number;
   invertY: boolean;
@@ -18,12 +19,26 @@ export interface Settings {
   showFps: boolean;
 }
 
+export type VoiceTarget = 'all' | 'team' | 'custom';
+export interface VoiceUI {
+  on: boolean; // joined voice chat (listening)
+  mic: boolean; // my microphone is live
+  target: VoiceTarget; // who hears me
+  custom: string[]; // chosen players when target = custom
+  muted: string[]; // players I don't want to hear
+  speaking: Record<string, boolean>;
+  status: Record<string, string>; // peer connection state
+  hearsMe: string[]; // players currently receiving my voice
+  panel: boolean;
+  busy: boolean;
+}
+
 export interface Toast { id: number; text: string; tone: 'info' | 'good' | 'bad' }
 
 const SETTINGS_KEY = 'hue.settings';
 const isMobile = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window);
 const defaultSettings: Settings = {
-  master: 0.8, music: 0.45, sfx: 0.8, ui: 0.7, quality: isMobile ? 'low' : 'high', sensitivity: 1, invertY: false, touch: 'auto', showFps: false,
+  master: 0.8, music: 0.45, sfx: 0.8, ui: 0.7, voice: 1, quality: isMobile ? 'low' : 'high', sensitivity: 1, invertY: false, touch: 'auto', showFps: false,
 };
 function loadSettings(): Settings {
   try {
@@ -80,6 +95,7 @@ interface State {
   aimTarget: boolean;
   lastResultsSeen: string | null;
   fps: number;
+  voice: VoiceUI;
 
   set: (p: Partial<State>) => void;
   go: (s: Screen) => void;
@@ -89,6 +105,14 @@ interface State {
 }
 
 let toastId = 1;
+function loadVoiceTarget(): VoiceTarget {
+  try {
+    const v = localStorage.getItem('hue.voiceTarget');
+    return v === 'all' || v === 'team' || v === 'custom' ? v : 'all';
+  } catch {
+    return 'all';
+  }
+}
 
 export const useStore = create<State>((set, get) => ({
   screen: 'boot',
@@ -129,6 +153,9 @@ export const useStore = create<State>((set, get) => ({
   aimTarget: false,
   lastResultsSeen: null,
   fps: 0,
+  voice: {
+    on: false, mic: false, target: loadVoiceTarget(), custom: [], muted: [], speaking: {}, status: {}, hearsMe: [], panel: false, busy: false,
+  },
 
   set: (p) => set(p),
   go: (screen) => set({ prevScreen: get().screen, screen }),
@@ -157,4 +184,5 @@ if (typeof window !== 'undefined') {
   const w = window as unknown as Record<string, unknown>;
   w.__hueStoreMyId = () => useStore.getState().myId;
   w.__hueRoom = () => useStore.getState().room;
+  w.__hueStore = () => useStore.getState();
 }

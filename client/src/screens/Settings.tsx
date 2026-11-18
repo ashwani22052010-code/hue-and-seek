@@ -2,7 +2,7 @@ import { useStore, type Settings as S } from '../store/useStore';
 import { Panel, ScreenShell } from '../ui/kit';
 import { sfx } from '../audio/sound';
 
-function Slider({ label, k }: { label: string; k: keyof Pick<S, 'master' | 'music' | 'sfx' | 'ui'> }) {
+function Slider({ label, k }: { label: string; k: keyof Pick<S, 'master' | 'music' | 'sfx' | 'ui' | 'voice'> }) {
   const v = useStore((s) => s.settings[k]);
   const update = useStore((s) => s.updateSettings);
   return (
@@ -29,6 +29,7 @@ export function SettingsBody({ compact }: { compact?: boolean }) {
       <Slider label="Music" k="music" />
       <Slider label="Effects" k="sfx" />
       <Slider label="UI" k="ui" />
+      <Slider label="Voice chat" k="voice" />
       <h3 className="mt-2 font-display text-lg font-bold">🖥️ Graphics</h3>
       <div className="flex gap-2">
         {(['low', 'high'] as const).map((q) => (

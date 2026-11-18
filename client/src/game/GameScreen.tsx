@@ -14,6 +14,7 @@ import { HUD, activateAbility } from './HUD';
 import { installInput, onKey, requestLock, exitLock, input } from '../controls/input';
 import { registry } from './registry';
 import { Spinner } from '../ui/kit';
+import { toggleMic } from '../ui/Voice';
 
 const mapCache = new Map<string, MapDef>();
 
@@ -78,6 +79,7 @@ export function GameScreen() {
       const a = s.abilities[i];
       if (a) activateAbility(a.id);
     }
+    if (code === 'KeyV' && s.voice.on) void toggleMic();
     if (code === 'KeyT') s.set({ quickMenu: s.quickMenu === 'chat' ? 'none' : 'chat' });
     if (code === 'KeyG') s.set({ quickMenu: s.quickMenu === 'emote' ? 'none' : 'emote' });
     if (code === 'KeyC' && me?.team === 'hider') s.set({ quickMenu: s.quickMenu === 'pose' ? 'none' : 'pose' });

@@ -72,6 +72,7 @@ export interface PublicPlayer {
   score: number;
   finds: number;
   look: PlayerLook;
+  voice: { on: boolean; mic: boolean };
 }
 
 export interface MatchResultPlayer {

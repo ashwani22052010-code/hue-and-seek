@@ -31,6 +31,8 @@ export class RoomPlayer {
   connected = true;
   disconnectedAt = 0;
   ready = false;
+  voiceOn = false;
+  micOn = false;
   limiter = new SocketLimiter();
   joinedAt = Date.now();
 
@@ -134,6 +136,7 @@ export class RoomPlayer {
       id: this.id, name: this.name, tag: this.tag, level: this.level, cosmetics: this.cosmetics,
       isHost: this.id === hostId, ready: this.ready, connected: this.connected, team: this.team, side: this.side,
       caught: this.caught, score: this.score, finds: this.finds, look: this.look,
+      voice: { on: this.voiceOn, mic: this.micOn },
     };
   }
 }

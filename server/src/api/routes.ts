@@ -8,6 +8,7 @@ import { validatePassword } from '../security/auth';
 import { presence } from '../players/presence';
 import type { RoomManager } from '../rooms/RoomManager';
 import { ownedCache } from '../network/socket';
+import { config } from '../config';
 
 type AuthedRequest = Request & { playerId?: string; token?: string };
 
@@ -144,6 +145,13 @@ export function apiRouter(rooms: RoomManager) {
     presence.emitTo(other, 'friends:changed', {});
     res.json({ ok: true });
   }));
+
+  r.get('/voice-config', requireAuth, (_req, res) => {
+    const iceServers: { urls: string | string[]; username?: string; credential?: string }[] = [];
+    if (config.voiceStun.length) iceServers.push({ urls: config.voiceStun });
+    if (config.voiceTurnUrl) iceServers.push({ urls: config.voiceTurnUrl.split(','), username: config.voiceTurnUsername, credential: config.voiceTurnCredential });
+    res.json({ iceServers });
+  });
 
   r.get('/level/:xp', (req, res) => res.json(levelFromXp(Number(req.params.xp) || 0)));
 

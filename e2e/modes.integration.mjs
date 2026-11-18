@@ -69,6 +69,7 @@ async function everyone() {
   await walk(a, [[hidePos[1][0] + 1.6, 0, -7.0]], 6.5);
   a.s.emit('tag', { p: [hidePos[1][0], 0.5, hidePos[1][2]] });
   await waitFor(() => a.ev('caught').some((e) => e.statue), 3000, 'statue found');
+  await waitFor(() => a.me().score >= 100, 2000, 'statue points').catch(() => {});
   T.ok(a.me().score >= 100, `${a.name} found ${b.name}'s statue (+100)`);
   await walk(b, toLiving(hidePos[0][0] + 1.6), 6.5);
   b.s.emit('tag', { p: [hidePos[0][0], 0.5, hidePos[0][2]] });
@@ -166,6 +167,7 @@ async function chaosAndAbilities() {
   s.s.emit('tag', { p: [-10.5, 0.5, -7.0] });
   await waitFor(() => s.ev('decoy_popped').length === 1, 3000, 'decoy popped');
   T.ok(s.abilities.tagReadyAt > Date.now() + 1500, 'seeker was stunned by the decoy');
+  await waitFor(() => h.me().score >= 25, 2000, 'decoy points').catch(() => {});
   T.ok(h.me().score >= 25, 'hider earned points for fooling the seeker');
   s.s.emit('tag', { p: [-11.7, 0.4, -7.6] });
   await sleep(300);

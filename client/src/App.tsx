@@ -11,6 +11,7 @@ import { Customize, Shop } from './screens/Customize';
 import { Friends, Leaderboard, ProfileScreen, PublicProfileModal } from './screens/Social';
 import { Btn, Panel, Spinner } from './ui/kit';
 import { playMusic } from './audio/sound';
+import { VoicePanel } from './ui/Voice';
 
 // The 3D game bundle is only loaded once a match starts.
 const GameScreen = lazy(() => import('./game/GameScreen').then((m) => ({ default: m.GameScreen })));
@@ -123,6 +124,7 @@ export default function App() {
       <Toasts />
       <InvitePopup />
       <PublicProfileModal />
+      <VoicePanel />
     </div>
   );
 }

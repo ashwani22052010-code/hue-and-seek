@@ -7,6 +7,7 @@ import { api } from '../multiplayer/api';
 import { Btn, Modal, Panel } from '../ui/kit';
 import { LobbyLineup } from '../characters/CharacterPreview';
 import { playMusic, sfx } from '../audio/sound';
+import { VoiceBar } from '../ui/Voice';
 
 function InviteFriends({ onClose }: { onClose: () => void }) {
   const [friends, setFriends] = useState<FriendEntry[] | null>(null);
@@ -83,6 +84,7 @@ export function Lobby() {
           <button onClick={() => copy(`${location.origin}/?join=${room.code}`, 'Invite link')} className="rounded-lg bg-indigo-100 px-2 py-1 text-xs font-bold">Link</button>
         </div>
         <Btn tone="sky" size="sm" onClick={() => setInviteOpen(true)}>👫 Invite friends</Btn>
+        <VoiceBar />
         {inMatch && <Btn tone="pink" size="sm" onClick={() => go('game')}>Match in progress - watch ▶</Btn>}
       </div>
 

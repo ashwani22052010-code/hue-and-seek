@@ -26,6 +26,7 @@ const LIMITS: Record<string, [number, number]> = {
   emote: [1, 3],
   room: [3, 8],
   misc: [5, 10],
+  voice: [40, 160],
 };
 
 /** Per-socket limiter set keyed by event category. */

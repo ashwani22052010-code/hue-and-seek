@@ -118,6 +118,8 @@ export class Room {
     p.socketId = null;
     p.disconnectedAt = Date.now();
     p.ready = false;
+    p.voiceOn = false;
+    p.micOn = false;
     if (this.hostId === p.id) this.pickNewHost();
     if (!this.connectedPlayers.length) this.emptySince = Date.now();
     this.markDirty();

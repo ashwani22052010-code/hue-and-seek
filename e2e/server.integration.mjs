@@ -125,6 +125,18 @@ async function run() {
   await waitFor(() => A.state.players.find((p) => p.name === 'Bobby')?.ready, 2000, 'B ready');
   ok(true, 'ready state visible to host');
 
+  const va = await A.emit('voice:state', { on: true, mic: true });
+  await B.emit('voice:state', { on: true, mic: false });
+  let sig = null;
+  B.s.on('voice:signal', (m) => (sig = m));
+  A.s.emit('voice:signal', { to: gb.data.profile.id, data: { sdp: { type: 'offer', sdp: 'v=0' } } });
+  await waitFor(() => sig, 2000, 'voice signal relay');
+  ok(va.ok && sig.from === ga.data.profile.id, 'voice signalling relayed between room members');
+  await waitFor(() => A.state.players.every((p) => p.voice.on), 2000, 'voice presence');
+  ok(A.state.players.find((p) => p.name === 'Alice').voice.mic, 'voice/mic presence visible in room state');
+  await A.emit('voice:state', { on: false });
+  await B.emit('voice:state', { on: false });
+
   console.log('\n[match: assign + prep]');
   const start = await A.emit('room:start');
   ok(start.ok, 'match started');
@@ -237,6 +249,8 @@ async function run() {
   ok(true, 'public room auto-start countdown when all ready');
   await waitFor(() => C.state.phase === 'assign' || C.state.phase === 'prep', 5000, 'public match started');
   ok(true, 'public match started automatically');
+  const pubVoice = await C.emit('voice:state', { on: true, mic: true });
+  ok(!pubVoice.ok, 'voice chat is refused in public rooms');
 
   console.log('\n[friends]');
   const fr = await api('/friends/request', { method: 'POST', token: gc.data.token, body: { nameTag: `Dmitri#${gd.data.profile.tag}` } });

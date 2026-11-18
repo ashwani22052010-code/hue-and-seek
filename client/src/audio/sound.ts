@@ -37,6 +37,11 @@ function applyVolumes() {
 }
 useStore.subscribe((s, p) => { if (s.settings !== p.settings) applyVolumes(); });
 
+/** Shared AudioContext (voice chat uses it for speaking indicators). */
+export function audioContext(): AudioContext | null {
+  return ensure();
+}
+
 export function unlockAudio() {
   const c = ensure();
   if (c && c.state === 'suspended') void c.resume();
