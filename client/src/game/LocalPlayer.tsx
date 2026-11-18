@@ -277,9 +277,11 @@ export function LocalPlayer({ def }: { def: MapDef }) {
     }
     const height = shape.height * (POSES[meNow?.look.pose ?? 'stand']?.heightFactor ?? 1);
     const paintCam = s.paintMode;
-    const dist = paintCam ? 2.3 : spectating ? 8 : cam.dist;
+    // portrait phones: the paint studio is a bottom sheet, so pull back and raise the character on screen
+    const portrait = state.size.width / state.size.height < 0.9;
+    const dist = paintCam ? (portrait ? 3.7 : 2.3) : spectating ? 8 : cam.dist;
     const pitch = paintCam ? THREE.MathUtils.clamp(cam.pitch, -0.5, 1.2) : cam.pitch;
-    const targetY = focus[1] + (paintCam ? height * 0.55 : Math.max(0.9, height * 0.95));
+    const targetY = focus[1] + (paintCam ? height * 0.55 - (portrait ? 0.75 : 0) : Math.max(0.9, height * 0.95));
     // seekers get an over-the-shoulder camera so their own body never blocks the crosshair
     const shoulder = !paintCam && !spectating && meNow?.team === 'seeker' && room.phase === 'hunt' ? 0.55 : 0;
     camTarget.current.set(focus[0] + Math.cos(cam.yaw) * shoulder, targetY, focus[2] - Math.sin(cam.yaw) * shoulder);
@@ -307,7 +309,6 @@ export function LocalPlayer({ def }: { def: MapDef }) {
       const inRange = !!h && h.point.distanceTo(new THREE.Vector3(p[0], p[1] + 0.9, p[2])) <= TAG_RANGE;
       if (inRange !== s.aimTarget) s.set({ aimTarget: inRange });
     }
-    void state;
   });
   const lastMoveAt = useRef(Date.now());
 

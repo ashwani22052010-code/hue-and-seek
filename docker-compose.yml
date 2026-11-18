@@ -1,0 +1,31 @@
+# Local production-like stack: game server + PostgreSQL.
+#   docker compose up --build   ->  http://localhost:3001
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hue
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: hueandseek
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hue -d hueandseek"]
+      interval: 5s
+      retries: 10
+
+  game:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://hue:${POSTGRES_PASSWORD:-change-me}@db:5432/hueandseek
+      TRUST_PROXY: "false"
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

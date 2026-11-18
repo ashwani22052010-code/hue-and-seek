@@ -108,7 +108,7 @@ export function GameScreen() {
         dpr={hi ? [1, 1.75] : [0.7, 1.1]}
         gl={{ antialias: hi, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
         camera={{ fov: 62, near: 0.08, far: 220, position: [0, 6, 10] }}
-        onCreated={({ gl }) => { gl.shadowMap.type = THREE.PCFSoftShadowMap; }}
+        onCreated={({ gl }) => { gl.shadowMap.type = THREE.PCFSoftShadowMap; (window as unknown as { __hueRenderInfo: () => unknown }).__hueRenderInfo = () => ({ ...gl.info.render, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures }); }}
       >
         {def && (
           <>

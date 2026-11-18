@@ -379,7 +379,7 @@ export function HUD({ def }: { def: MapDef | null }) {
             {def && !touch && <Minimap def={def} size={150} />}
             {def && touch && <Minimap def={def} size={96} />}
           </div>
-          <div className="absolute left-1/2 top-[4.4rem] max-w-[38vw] -translate-x-1/2 rounded-2xl bg-black/45 px-3 py-1 text-center text-[10px] font-bold leading-tight text-white sm:top-[4.9rem] sm:max-w-[90vw] sm:rounded-full sm:px-4 sm:text-sm">
+          <div className={`${touch && s.paintMode ? 'hidden' : ''} absolute left-1/2 top-[4.4rem] max-w-[38vw] -translate-x-1/2 rounded-2xl bg-black/45 px-3 py-1 text-center text-[10px] font-bold leading-tight text-white sm:top-[4.9rem] sm:max-w-[90vw] sm:rounded-full sm:px-4 sm:text-sm`}>
             {objectiveText(me, phase, room.settings.mode)}
           </div>
         </>
@@ -410,8 +410,8 @@ export function HUD({ def }: { def: MapDef | null }) {
 
       {/* hider paint prompt */}
       {canPaint && !s.paintMode && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 sm:bottom-6">
-          <Btn tone="pink" size="lg" className="pointer-events-auto ring-4 ring-pink-200/70" onPointerDown={(e) => e.stopPropagation()} onClick={() => { exitLock(); s.set({ paintMode: true }); }}>
+        <div className={`absolute left-1/2 -translate-x-1/2 ${touch ? 'top-[8.5rem]' : 'bottom-6'}`}>
+          <Btn tone="pink" size={touch ? 'md' : 'lg'} className="pointer-events-auto whitespace-nowrap ring-4 ring-pink-200/70" onPointerDown={(e) => e.stopPropagation()} onClick={() => { exitLock(); s.set({ paintMode: true }); }}>
             🎨 Paint yourself {!touch && <span className="ml-1 rounded bg-white/30 px-1.5 text-sm">P</span>}
           </Btn>
         </div>
@@ -419,14 +419,14 @@ export function HUD({ def }: { def: MapDef | null }) {
       {s.paintMode && canPaint && <PaintPanel />}
 
       {/* abilities */}
-      {!hideHud && !spectating && (
+      {!hideHud && !spectating && !(touch && s.paintMode) && (
         <div className={`absolute ${touch ? 'right-3 top-1/2 -translate-y-1/2' : 'bottom-5 right-5'}`}>
           <AbilityBar vertical={touch} />
         </div>
       )}
 
       {/* social buttons */}
-      {!hideHud && (
+      {!hideHud && !(touch && s.paintMode) && (
         <div className={`pointer-events-auto absolute flex gap-2 ${touch ? 'left-3 top-36 flex-col' : 'bottom-5 left-5'}`} onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => s.set({ quickMenu: s.quickMenu === 'chat' ? 'none' : 'chat' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Quick chat">💬</button>
           <button onClick={() => s.set({ quickMenu: s.quickMenu === 'emote' ? 'none' : 'emote' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Emotes">😄</button>

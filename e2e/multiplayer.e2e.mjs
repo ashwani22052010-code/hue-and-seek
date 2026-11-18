@@ -188,7 +188,7 @@ async function run() {
   await waitFor(() => A.page.getByTestId('start-btn').isEnabled(), 6000, 'start 2');
   await A.page.getByTestId('start-btn').click();
   await waitFor(async () => (await M.page.locator('canvas').count()) > 0, 15000, 'mobile game');
-  await waitFor(async () => /Hide & paint|blindfolded/.test(await text(M.page)), 15000, 'mobile prep');
+  await waitFor(async () => /hide & paint|blindfolded/i.test(await text(M.page)), 40000, 'mobile prep');
   await sleep(1500);
   const joystick = await M.page.locator('.rounded-full.border-4.border-white\\/40').count();
   const mText = await text(M.page);

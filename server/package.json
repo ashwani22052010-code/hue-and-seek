@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --packages=external --sourcemap",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --packages=external --sourcemap --alias:@shared=../shared/src && cp src/database/schema.sql dist/schema.sql",
     "start": "node --enable-source-maps dist/index.js"
   },
   "dependencies": {
