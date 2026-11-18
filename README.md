@@ -200,6 +200,16 @@ docker compose up --build
 starts PostgreSQL and the game on http://localhost:3001 (set `POSTGRES_PASSWORD` first).
 Or build just the image with `docker build -t hue-and-seek .` and run it with `DATABASE_URL` set.
 
+### One-click deploy on Render (works from a phone/tablet browser)
+1. Push this repository to GitHub.
+2. On https://render.com sign in with GitHub, then **New → Blueprint**, pick the repository and press **Apply**.
+3. `render.yaml` creates the web service and a PostgreSQL database. When the deploy finishes, open the
+   `https://<name>.onrender.com` URL and share it with friends.
+
+Free-plan notes: the service sleeps after ~15 minutes without visitors (first load then takes up to a
+minute), and Render's free PostgreSQL databases expire after a limited period; upgrade the plans in
+`render.yaml` for a permanent setup.
+
 ### Hosting notes (Render, Railway, Fly.io, a VPS, ...)
 - Run as a **single instance** (room state lives in memory). Scaling horizontally needs sticky sessions
   plus a shared room directory (e.g. the Socket.IO Redis adapter) — not included in this version.
