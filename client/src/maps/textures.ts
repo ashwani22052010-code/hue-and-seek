@@ -157,7 +157,7 @@ export function grayTile(id: GenId): HTMLCanvasElement {
       pixelNoise(ctx, 0.94, 1, 29);
       break;
     case 'noise':
-      pixelNoise(ctx, 0.7, 1, 31);
+      pixelNoise(ctx, 0.86, 1, 31);
       break;
   }
   grayCache.set(id, c);

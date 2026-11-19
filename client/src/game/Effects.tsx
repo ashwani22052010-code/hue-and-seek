@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { Vec3 } from '@shared/types';
@@ -6,6 +6,10 @@ import { useStore } from '../store/useStore';
 import { fx } from './fxBus';
 import { sampleRemote } from '../multiplayer/net';
 import { registry } from './registry';
+import { PROPS } from '@shared/props/registry';
+import { modelGeometry } from '../props/models';
+import { Hueling, newLive } from '../characters/Hueling';
+import { DEFAULT_COSMETICS } from '@shared/constants';
 
 // ---------- pooled particles ----------
 const MAX = 400;
@@ -48,6 +52,7 @@ function Particles() {
         if (d) burst([d.p[0], d.p[1] + 0.5, d.p[2]], 40, 2.5, ['#e2e8f0', '#cbd5e1', '#94a3b8'], 0.14, 1.5);
       }
       if (e.kind === 'paint') burst(e.p, 3, 0.6, [e.color], 0.04, 0.5);
+      if (e.kind === 'poof') burst(e.p, 28, 1.8, ['#ffffff', '#e9d5ff', '#c4b5fd', '#fde68a'], 0.09, 1.6);
     });
   }, [pool, color]);
 
@@ -148,9 +153,66 @@ function ScannerZones() {
   );
 }
 
+// ---------- transform target outline ----------
+function TargetHighlight() {
+  const target = useStore((s) => s.propTarget);
+  const group = useRef<THREE.Group>(null!);
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#4ade80', side: THREE.BackSide, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }), []);
+  const geos = useMemo(() => {
+    if (!target) return [];
+    return [...modelGeometry(target.type, 0.6).values()].map((v) => v.geo);
+  }, [target]);
+  const it = target && registry.map ? registry.map.items[target.index] : null;
+  const t = it ? PROPS[it.t] : null;
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    mat.color.set(target?.valid ? '#4ade80' : '#f87171');
+    mat.opacity = 0.55 + Math.sin(clock.elapsedTime * 6) * 0.3;
+  });
+  if (!it || !t) return null;
+  const s = it.s ?? 1;
+  const cy = (t.size[1] * s) / 2;
+  const grow = 1 + Math.min(0.12, 0.03 / Math.max(0.05, Math.min(t.size[0], t.size[1], t.size[2]) * s));
+  return (
+    <group ref={group} position={[it.p[0], it.p[1] + cy, it.p[2]]} rotation={[0, it.r, 0]}>
+      <group scale={s * grow} position={[0, -cy * grow, 0]}>
+        {geos.map((g, i) => <mesh key={i} geometry={g} material={mat} renderOrder={5} />)}
+      </group>
+    </group>
+  );
+}
+
+// ---------- caught animation: the found hider spins up and pops ----------
+function CaughtGhosts() {
+  const [ghosts, setGhosts] = useState<{ key: number; p: Vec3; yaw: number; t0: number }[]>([]);
+  useEffect(() => fx.on((e) => {
+    if (e.kind !== 'caught') return;
+    const p = e.id === useStore.getState().myId ? registry.local.p : sampleRemote(e.id)?.p;
+    if (!p) return;
+    const g = { key: Math.random(), p: [...p] as Vec3, yaw: 0, t0: performance.now() };
+    setGhosts((x) => [...x, g]);
+    setTimeout(() => setGhosts((x) => x.filter((y) => y !== g)), 1100);
+  }), []);
+  return <>{ghosts.map((g) => <Ghost key={g.key} p={g.p} t0={g.t0} />)}</>;
+}
+function Ghost({ p, t0 }: { p: Vec3; t0: number }) {
+  const ref = useRef<THREE.Group>(null!);
+  const live = useMemo(() => { const l = newLive(); l.eyesClosed = true; return l; }, []);
+  useFrame(() => {
+    const a = Math.min(1, (performance.now() - t0) / 1000);
+    ref.current.position.set(p[0], p[1] + a * 1.6, p[2]);
+    ref.current.rotation.y = a * 12;
+    ref.current.scale.setScalar(Math.max(0.01, 1 - a * a));
+    live.opacity = 1 - a * 0.6;
+  });
+  return <group ref={ref}><Hueling look={{ pose: 'curl', shape: 'normal' }} cosmetics={DEFAULT_COSMETICS} showCosmetics={false} paint={null} live={live} /></group>;
+}
+
 export function Effects() {
   return (
     <>
+      <TargetHighlight />
+      <CaughtGhosts />
       <Particles />
       <Footprints />
       <ScannerZones />

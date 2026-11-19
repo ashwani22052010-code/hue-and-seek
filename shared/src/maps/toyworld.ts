@@ -132,6 +132,23 @@ export function buildToyWorld(): MapDef {
   b.cone(15.8, 0, 9, 1.4, 2, '#ef4444', { tex: 'stripes', ts: 0.5, decor: true });
   b.sphere(-5, 0, 13, 1.6, '#f97316', { tex: 'stripes', ts: 0.8, decor: true }); // beach ball
 
+
+  // ---------- ceiling, lights, extra toys ----------
+  b.ceiling(-18, -18, 18, 18, H, '#e9d5ff', 0.25, 'dots');
+  b.light([0, 4.2, 0], '#fff5f5', 10, 22);
+  for (const [x, z] of [[-9, -9], [9, -9], [-9, 9], [9, 9], [0, 0]] as const) b.box(x, H - 0.06, z, 1.4, 0.06, 1.4, '#fffbeb', { glow: true, solid: false });
+  for (const [x, z, c] of [[-2, 7, '#ef4444'], [5, -7, '#3b82f6'], [-12, 1, '#22c55e'], [9, 3, '#facc15'], [-6, -15, '#a855f7']] as const) b.item('ball', x, 0, z, 0, c);
+  for (const [x, z, c] of [[-1, -10.5, '#b8794a'], [7.5, -14.6, '#f9a8d4'], [-15.6, 6.5, '#d6a066']] as const) b.item('teddy', x, 0, z, 0.5, c);
+  for (const [x, z] of [[3, 9.2], [-3.4, -6.4], [12.6, -5.8], [-15, -8]] as const) b.item('blocks', x, 0, z, 0.6, b.pick(['#facc15', '#ef4444', '#3b82f6', '#22c55e']));
+  for (const [x, z] of [[-7.5, 2.6], [11, -6.2], [6.4, 13.6]] as const) b.item('toycar', x, 0, z, 1.1, b.pick(['#2563eb', '#ef4444', '#16a34a']));
+  for (const [x, z] of [[1.2, -15.8], [-10.4, -14.6], [15.3, 0.4]] as const) b.item('robot', x, 0, z, 0.3, '#94a3b8');
+  for (const [x, z] of [[-11.8, 12.3], [-13.4, 11.6]] as const) b.item('duck', x, 0, z, 0.8, '#facc15');
+  b.item('cushion', 4.2, 0, -12.8, 0.4, '#a78bfa');
+  b.item('backpack', 13.6, 0, 6.8, -0.4, '#ec4899');
+  b.item('bucket', 9.6, 0, 15.2, 0, '#22c55e');
+  b.item('painting', -17.85, 2.4, -6, Math.PI / 2, '#38bdf8', 1.6);
+  b.item('clock', 0, 3.4, -17.86, 0, '#fde68a', 2.2);
+
   return {
     id: 'toyworld',
     bounds: { minX: -18, maxX: 18, minZ: -18, maxZ: 18 },
@@ -144,6 +161,7 @@ export function buildToyWorld(): MapDef {
     hiderSpawns: [[-4, 0, 3], [-2, 0, 3], [0, 0, 3], [2, 0, 3], [4, 0, 3], [-4, 0, 5], [0, 0, 5], [4, 0, 5]],
     seekerSpawns: [[14, 0, 11], [15.6, 0, 11], [14, 0, 12.4], [12.6, 0, 12.2]],
     props: b.props,
+    items: b.items,
     interactables: b.interactables,
     lights: b.lights,
   };

@@ -1,4 +1,4 @@
-import { MapBuilder, TOY_COLORS } from './builder';
+import { MapBuilder, TOY_COLORS, BOOK_COLORS as BOOKS } from './builder';
 import type { MapDef } from './types';
 
 export function buildSchool(): MapDef {
@@ -150,6 +150,40 @@ export function buildSchool(): MapDef {
   b.box(15.5, 0, 0.5 + 12, 0.3, 0.35, 0.3, '#475569');
   b.box(15.5, 0.35, 12.5, 3, 0.08, 0.35, '#22c55e', { rot: [0, 0, 0.18], solid: false, decor: true });
 
+
+  // ---------- ceilings (playground stays open air), lights, objects ----------
+  b.ceiling(-20, -15, 12, 15, H, '#f8fafc', 0.2, 'tile');
+  b.light([-13, 3.0, 8], '#fff7e0', 8, 14);
+  b.light([1, 3.0, 8.5], '#ffffff', 8, 14);
+  b.light([-12, 3.0, -8.5], '#ffe8c2', 7, 13);
+  b.light([4, 3.0, -8.5], '#ffffff', 8, 14);
+  for (const [x, z] of [[-13, 8], [1, 8.5], [-12, -8.5], [4, -8.5], [-10, 0], [2, 0]] as const) b.box(x, H - 0.06, z, 1.6, 0.06, 0.5, '#fffbeb', { glow: true, solid: false });
+  for (const [x, z] of [[-17.5, 5.6], [-11.5, 8.2], [-8.5, 10.8]] as const) b.item('backpack', x + 0.45, 0, z, 0.4, b.pick(['#ef4444', '#2563eb', '#16a34a', '#a855f7']));
+  for (const [x, z] of [[-17.5, 5], [-14.5, 7.6], [-11.5, 10.2]] as const) b.item('book', x, 0.72, z, 0.3, b.pick(BOOKS));
+  b.item('globe', -14.2, 0.8, 13.2, 0.4);
+  b.item('mug', -15.6, 0.8, 13.1, 0, '#f97316');
+  b.item('trashbin', -6.6, 0, 14.4, 0, '#2563eb');
+  b.item('clock', -15, 2.6, 14.86, Math.PI, '#ffffff');
+  b.item('clock', 1, 2.6, 14.86, Math.PI, '#fde68a');
+  for (const [x, z] of [[-3, 7], [3.5, 11.5]] as const) { b.item('paintcan', x + 0.6, 0.75, z + 0.2, 0, '#ef4444'); b.item('jar', x - 0.7, 0.75, z - 0.3, 0, '#bfdbfe'); }
+  b.item('bucket', 6.8, 0, 3.2, 0, '#f59e0b');
+  b.item('sculpture', 0.5, 0, 6.2, 0.4, '#e7e5e4');
+  b.item('laptop', -7.3, 0.75, -12.4, 0.2);
+  b.item('monitor', -6.5, 1.0, -4.15, Math.PI);
+  b.item('books', -7.8, 0.75, -8.1, 0.4, '#7c2d12');
+  b.item('tablelamp', -8.1, 0.75, -12.7, 0, '#86efac');
+  b.item('globe', -6.9, 0.75, -7.9, 0);
+  b.item('cushion', -9.0, 0, -13.6, 0.4, '#fca5a5');
+  b.item('plant', -19.2, 0, -14.2, 0, '#c2410c');
+  for (const [x, z] of [[2, -10.5], [5.5, -6.5], [7.5, -10.5]] as const) b.item('ball', x, 0, z, 0, b.pick(['#f97316', '#ef4444', '#facc15']));
+  b.item('cone', 3.5, 0, -12.6, 0, '#f97316');
+  b.item('backpack', -2.6, 1.35, -6.5, 1.6, '#0ea5e9');
+  b.item('trashbin', 11.4, 0, -2.6, 0, '#16a34a');
+  b.item('wateringcan', 16.4, 0, 3.4, 0.4, '#22c55e');
+  b.item('bucket', 17.2, 0.08, 6.2, 0, '#ef4444');
+  b.item('ball', 13.4, 0, 5.0, 0, '#3b82f6');
+  b.item('trashbin', 19.3, 0, -9.0, 0, '#475569');
+
   return {
     id: 'school',
     bounds: { minX: -20, maxX: 20, minZ: -15, maxZ: 15 },
@@ -162,6 +196,7 @@ export function buildSchool(): MapDef {
     hiderSpawns: [[-17, 0, 0], [-13, 0, 0], [-9, 0, 0], [-5, 0, 0], [-1, 0, 0], [3, 0, 0], [7, 0, 0], [-19, 0, 0]],
     seekerSpawns: [[16, 0, -0.2], [17.5, 0, 1], [17.5, 0, -0.8], [18.8, 0, 0.2]],
     props: b.props,
+    items: b.items,
     interactables: b.interactables,
     lights: b.lights,
   };

@@ -14,6 +14,17 @@ export interface PropDef {
   decor?: boolean; // eligible for chaos decoration shuffle
   group?: string; // interactable group id
   glow?: boolean; // emissive
+  ceil?: boolean; // ceiling / roof slab (never casts shadows)
+  glass?: boolean; // transparent window pane
+}
+
+/** A detailed object from the prop registry placed in the map (y = bottom). */
+export interface ItemDef {
+  t: string; // prop type id (shared/src/props/registry.ts)
+  p: Vec3;
+  r: number; // yaw
+  c?: string; // main colour override
+  s?: number; // uniform scale
 }
 
 export type InteractableKind = 'door' | 'lamp' | 'sound';
@@ -49,6 +60,7 @@ export interface MapDef {
   hiderSpawns: Vec3[];
   seekerSpawns: Vec3[];
   props: PropDef[];
+  items: ItemDef[];
   interactables: InteractableDef[];
   lights: LightDef[];
 }

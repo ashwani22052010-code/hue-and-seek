@@ -6,6 +6,8 @@ import { buildSupermarket } from './supermarket';
 import { buildSchool } from './school';
 import { buildToyWorld } from './toyworld';
 import { buildFactory } from './factory';
+import { buildOffice } from './office';
+import { buildRestaurant } from './restaurant';
 
 const builders: Record<MapId, () => MapDef> = {
   house: buildHouse,
@@ -13,6 +15,8 @@ const builders: Record<MapId, () => MapDef> = {
   school: buildSchool,
   toyworld: buildToyWorld,
   factory: buildFactory,
+  office: buildOffice,
+  restaurant: buildRestaurant,
 };
 const cache = new Map<MapId, MapDef>();
 export function getMapSync(id: MapId): MapDef {

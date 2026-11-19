@@ -87,7 +87,7 @@ function noise(out: AudioNode, dur: number, freq: number, vol = 0.2, at = 0, q =
 
 export type SfxName =
   | 'click' | 'hover' | 'jump' | 'step' | 'caught' | 'miss' | 'boing' | 'ability' | 'scan' | 'chaos' | 'door' | 'toy' | 'pop' | 'notify'
-  | 'whoosh' | 'start' | 'hunt' | 'victory' | 'defeat' | 'paint' | 'tick' | 'squeak' | 'bell' | 'horn' | 'chime' | 'piano' | 'land' | 'error';
+  | 'whoosh' | 'start' | 'hunt' | 'victory' | 'defeat' | 'paint' | 'tick' | 'squeak' | 'bell' | 'horn' | 'chime' | 'piano' | 'land' | 'error' | 'transform' | 'aim';
 
 /** Play a sound effect; with a world position it is attenuated and panned relative to the local player. */
 export function sfx(name: SfxName, pos?: Vec3, volume = 1) {
@@ -141,6 +141,8 @@ export function sfx(name: SfxName, pos?: Vec3, volume = 1) {
     case 'defeat': [392, 349, 311, 262].forEach((f, i) => tone(out, f, 0.4, 'triangle', 0.18, i * 0.2)); break;
     case 'paint': noise(out, 0.12, 2400 + Math.random() * 800, 0.06, 0, 1.5); break;
     case 'tick': tone(out, 1046, 0.08, 'square', 0.08); break;
+    case 'transform': tone(out, 300, 0.25, 'sine', 0.18, 0, 900); tone(out, 900, 0.2, 'triangle', 0.1, 0.12, 1500); noise(out, 0.3, 3000, 0.08, 0.05, 0.8); break;
+    case 'aim': tone(out, 1400, 0.05, 'sine', 0.05); break;
   }
 }
 
@@ -154,6 +156,13 @@ const TRACKS: Record<Exclude<Track, 'none'>, { bpm: number; chords: number[][]; 
 };
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 let current: Track = 'none';
+// each map gets its own flavour of every track (key, tempo, lead instrument)
+const MAP_FLAVOR: Record<string, { tr: number; bpm: number; wave?: Wave }> = {
+  house: { tr: 0, bpm: 1 }, supermarket: { tr: 2, bpm: 1.06, wave: 'square' }, school: { tr: -3, bpm: 0.96 },
+  toyworld: { tr: 5, bpm: 1.12, wave: 'square' }, factory: { tr: -5, bpm: 0.9, wave: 'sawtooth' },
+  office: { tr: -2, bpm: 1.02, wave: 'triangle' }, restaurant: { tr: 3, bpm: 0.92, wave: 'triangle' },
+};
+let flavor = MAP_FLAVOR.house;
 let pendingTrack: Track | null = null;
 let timer: number | null = null;
 let step = 0;
@@ -174,17 +183,18 @@ function startTrack(track: Track) {
 function schedule() {
   if (!ctx || current === 'none') return;
   const tr = TRACKS[current as Exclude<Track, 'none'>];
-  const sixteenth = 60 / tr.bpm / 4;
+  const sixteenth = 60 / (tr.bpm * flavor.bpm) / 4;
   while (nextTime < ctx.currentTime + 0.25) {
     const at = nextTime - ctx.currentTime;
     const bar = Math.floor(step / 16) % tr.chords.length;
     const chord = tr.chords[bar];
     const s = step % 16;
-    if (s === 0) for (const n of chord) tone(musicGain, midi(n), sixteenth * 15, 'sine', 0.05, at, undefined, 0.25);
-    if (tr.bass && s % 4 === 0) tone(musicGain, midi(chord[0] - 24), sixteenth * 3, current === 'hunt' ? 'sawtooth' : 'triangle', 0.12, at);
+    if (s === 0) for (const n of chord) tone(musicGain, midi(n + flavor.tr), sixteenth * 15, 'sine', 0.05, at, undefined, 0.25);
+    if (tr.bass && s % 4 === 0) tone(musicGain, midi(chord[0] - 24 + flavor.tr), sixteenth * 3, current === 'hunt' ? 'sawtooth' : 'triangle', 0.12, at);
     if (tr.arp && s % 2 === 0) {
       const n = chord[(s / 2) % chord.length] + (s >= 8 ? 12 : 0);
-      tone(musicGain, midi(n), sixteenth * 1.6, tr.wave, tr.wave === 'sine' || tr.wave === 'triangle' ? 0.07 : 0.025, at);
+      const w = current === 'lobby' ? tr.wave : flavor.wave ?? tr.wave;
+      tone(musicGain, midi(n + flavor.tr), sixteenth * 1.6, w, w === 'sine' || w === 'triangle' ? 0.07 : 0.025, at);
     }
     if (tr.drums) {
       if (s % 8 === 0) tone(musicGain, 120, 0.15, 'sine', 0.3, at, 40);
@@ -196,7 +206,9 @@ function schedule() {
   }
 }
 
-export function playMusic(track: Track) {
+export function playMusic(track: Track, mapId?: string) {
+  const f = (mapId && MAP_FLAVOR[mapId]) || MAP_FLAVOR.house;
+  if (f !== flavor) { flavor = f; if (track === current) { startTrack(track); return; } }
   if (track === current && timer !== null) return;
   startTrack(track);
 }

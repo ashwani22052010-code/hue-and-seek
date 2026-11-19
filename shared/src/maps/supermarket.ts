@@ -126,6 +126,39 @@ export function buildSupermarket(): MapDef {
   b.interact({ id: 'lamp_stock', kind: 'lamp', label: 'Light Switch', p: [8.6, 1.2, -6], defaultActive: true });
   b.box(8.2, 1.1, -6, 0.1, 0.25, 0.15, '#f8fafc', { solid: false });
 
+
+  // ---------- ceiling, lights, objects ----------
+  b.ceiling(-18, -14, 18, 14, H, '#f1f5f9', 0.2, 'tile');
+  for (const x of [-12, -2, 8]) for (const z of [-8, 0, 8]) b.box(x, H - 0.06, z, 2.4, 0.06, 0.5, '#fffbeb', { glow: true, solid: false });
+  b.light([-6, 3.4, -2], '#ffffff', 10, 20);
+  b.light([8, 3.4, 4], '#ffffff', 9, 18);
+  // display tables near the entrance
+  for (const [tx, tz] of [[-14.5, 4.5], [7.5, 6.5]] as const) {
+    b.box(tx, 0, tz, 2.2, 0.8, 1.1, '#fde68a', { tex: 'wood', ts: 0.5 });
+    for (let i = 0; i < 6; i++) b.item('can', tx - 0.8 + (i % 3) * 0.2, 0.8, tz - 0.3 + Math.floor(i / 3) * 0.15, 0, b.pick(['#dc2626', '#16a34a', '#2563eb']));
+    for (let i = 0; i < 3; i++) b.item('cereal', tx + 0.2 + i * 0.25, 0.8, tz + 0.1, 0.1 * i, b.pick(['#f59e0b', '#ef4444', '#a855f7']));
+    b.item('bottle', tx + 0.9, 0.8, tz - 0.35, 0, '#0ea5e9');
+    b.item('bottle', tx + 0.75, 0.8, tz - 0.3, 0, '#f97316');
+    b.item('fruitbowl', tx - 0.5, 0.8, tz + 0.3, 0, '#a16207');
+  }
+  for (let i = 0; i < 5; i++) b.item('basket', 5.2 + (i % 2) * 0.05, i * 0.12, 12.8, 0.05 * i, '#dc2626');
+  b.item('basket', 1.2, 0, 7.4, 0.6, '#16a34a');
+  for (const x of [-12, -7, -2]) b.item('stool', x - 0.8, 0, 11.2, 0, '#334155');
+  b.item('trashbin', -17.3, 0, 12.8, 0, '#16a34a');
+  b.item('trashbin', 17.3, 0, 12.6, 0, '#475569');
+  b.item('cone', 1.3, 0, 6.0, 0, '#facc15');
+  b.item('plant', -17.2, 0, 7.8, 0, '#1e3a8a');
+  b.item('plant', -5.2, 0, 13.3, 1, '#c2410c');
+  b.item('clock', 0, 2.6, 13.84, Math.PI, '#ffffff');
+  b.item('cardbox', 9.6, 0, -5.0, 0.3, '#c8a26b');
+  b.item('cardbox', 10.2, 0, -5.4, -0.2, '#d6b583');
+  b.item('crate', 16.8, 0, -12.8, 0, '#b45309');
+  b.item('bucket', 9.2, 0, -12.9, 0, '#f59e0b');
+  b.item('toolbox', 15.0, 0, -6.6, 0.4, '#dc2626');
+  b.item('jug', -15.2, 1.06, 10.9, 0.2, '#bae6fd');
+  b.item('phone', -15.9, 1.06, 11.0, 0.3, '#1f2937');
+  b.item('laptop', -15.0, 1.06, 11.1, 3.0);
+
   return {
     id: 'supermarket',
     bounds: { minX: -18, maxX: 18, minZ: -14, maxZ: 14 },
@@ -138,6 +171,7 @@ export function buildSupermarket(): MapDef {
     hiderSpawns: [[-14.5, 0, 6.5], [-9.5, 0, 6.5], [-4.5, 0, 6.5], [0.8, 0, 6.5], [5.5, 0, 6.5], [-9.5, 0, 12.5], [-4.5, 0, 12.5], [0.5, 0, 12.5]],
     seekerSpawns: [[15, 0, 10], [15, 0, 12.4], [16.6, 0, 10], [16.6, 0, 12.4]],
     props: b.props,
+    items: b.items,
     interactables: b.interactables,
     lights: b.lights,
   };

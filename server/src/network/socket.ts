@@ -55,7 +55,7 @@ export function attachSockets(io: Server, rooms: RoomManager) {
     if (existing) {
       existing.addPlayer(data.identity, socket.id);
       socket.emit('room:joined', { code: existing.code, reconnected: true });
-      socket.emit('room:state', existing.state());
+      socket.emit('room:state', existing.state(existing.players.get(pid)));
     }
 
     const room = () => rooms.roomOf(pid);
@@ -69,7 +69,7 @@ export function attachSockets(io: Server, rooms: RoomManager) {
       const r = rooms.rooms.get(code)!;
       ack({ ok: true, code });
       socket.emit('room:joined', { code });
-      socket.emit('room:state', r.state());
+      socket.emit('room:state', r.state(r.players.get(pid)));
     };
 
     socket.on('ping:check', (_d, a) => ackOf(a)({ ok: true, t: Date.now() }));
@@ -189,6 +189,15 @@ export function attachSockets(io: Server, rooms: RoomManager) {
       const id = oneOf(d.id, Object.keys(ABILITIES) as AbilityId[]);
       const r = room(), p = me();
       if (id && r?.match && p) r.match.handleAbility(p, id, d.data);
+    });
+
+    socket.on('transform', (d, a) => {
+      const ack = ackOf(a);
+      if (!limit('ability') || !isObj(d)) return ack({ ok: false, error: 'Slow down' });
+      const r = room(), p = me();
+      if (!r?.match || !p) return ack({ ok: false, error: 'Not in a match' });
+      const err = r.match.handleTransform(p, d.revert === true ? { revert: true } : { item: Number(d.item) });
+      ack(err ? { ok: false, error: err } : { ok: true });
     });
 
     socket.on('interact', (d) => {

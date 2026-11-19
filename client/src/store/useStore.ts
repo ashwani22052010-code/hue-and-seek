@@ -12,7 +12,10 @@ export interface Settings {
   sfx: number;
   ui: number;
   voice: number;
-  quality: 'low' | 'high';
+  quality: 'low' | 'medium' | 'high';
+  invertX: boolean;
+  joySens: number; // joystick responsiveness
+  touchLook: number; // touch camera speed
   sensitivity: number;
   invertY: boolean;
   touch: 'auto' | 'on' | 'off';
@@ -38,7 +41,7 @@ export interface Toast { id: number; text: string; tone: 'info' | 'good' | 'bad'
 const SETTINGS_KEY = 'hue.settings';
 const isMobile = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window);
 const defaultSettings: Settings = {
-  master: 0.8, music: 0.45, sfx: 0.8, ui: 0.7, voice: 1, quality: isMobile ? 'low' : 'high', sensitivity: 1, invertY: false, touch: 'auto', showFps: false,
+  master: 0.8, music: 0.45, sfx: 0.8, ui: 0.7, voice: 1, quality: isMobile ? 'low' : 'high', sensitivity: 1, invertY: false, invertX: false, joySens: 1, touchLook: 1, touch: 'auto', showFps: false,
 };
 function loadSettings(): Settings {
   try {
@@ -96,6 +99,9 @@ interface State {
   lastResultsSeen: string | null;
   fps: number;
   voice: VoiceUI;
+  propTarget: import('../game/transform').PropTarget | null;
+  propLocked: boolean;
+  transformReadyAt: number;
 
   set: (p: Partial<State>) => void;
   go: (s: Screen) => void;
@@ -153,6 +159,9 @@ export const useStore = create<State>((set, get) => ({
   aimTarget: false,
   lastResultsSeen: null,
   fps: 0,
+  propTarget: null,
+  propLocked: false,
+  transformReadyAt: 0,
   voice: {
     on: false, mic: false, target: loadVoiceTarget(), custom: [], muted: [], speaking: {}, status: {}, hearsMe: [], panel: false, busy: false,
   },

@@ -3,17 +3,27 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { MapDef } from '@shared/maps';
 import { useStore } from '../store/useStore';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { applyPropColors, buildMap } from './buildMap';
 import { registry } from '../game/registry';
 
 export function MapScene({ def }: { def: MapDef }) {
   const quality = useStore((s) => s.settings.quality);
   const shadows = quality === 'high';
-  const built = useMemo(() => buildMap(def, shadows), [def, shadows]);
+  const built = useMemo(() => buildMap(def, quality, useStore.getState().room?.propColors ?? {}), [def, quality]);
   const interactables = useStore((s) => s.room?.interactables);
   const propColors = useStore((s) => s.room?.propColors);
   const chaos = useStore((s) => s.chaosFx);
-  const { scene, camera } = useThree();
+  const { scene, camera, gl } = useThree();
+  // soft image-based lighting gives metal, glass and glossy objects subtle reflections (medium/high)
+  useEffect(() => {
+    if (quality === 'low') { scene.environment = null; return; }
+    const pm = new THREE.PMREMGenerator(gl);
+    const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = env;
+    scene.environmentIntensity = 0.45;
+    return () => { scene.environment = null; env.dispose(); pm.dispose(); };
+  }, [quality, scene, gl]);
   const amb = useRef<THREE.AmbientLight>(null!);
   const hemi = useRef<THREE.HemisphereLight>(null!);
   const sun = useRef<THREE.DirectionalLight>(null!);
@@ -23,9 +33,11 @@ export function MapScene({ def }: { def: MapDef }) {
 
   useEffect(() => {
     registry.built = built;
-    registry.mapMeshes = [...built.chunks.map((c) => c.mesh), ...[...built.interactive.values()].flatMap((e) => e.meshes), built.group.children[built.group.children.length - 1]];
+    registry.itemMeshes = built.itemChunks.map((c) => c.mesh);
+    registry.mapMeshes = [...built.chunks.map((c) => c.mesh), ...registry.itemMeshes, ...[...built.interactive.values()].flatMap((e) => e.meshes), built.group.children[built.group.children.length - 1]];
     return () => {
       registry.mapMeshes = [];
+      registry.itemMeshes = [];
       registry.built = null;
       built.dispose();
     };

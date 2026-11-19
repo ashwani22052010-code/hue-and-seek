@@ -9,7 +9,9 @@ import { Btn, Panel, fmtTime } from '../ui/kit';
 import { Minimap } from './Minimap';
 import { PaintPanel, PosePicker } from './PaintPanel';
 import { input, exitLock, cam } from '../controls/input';
-import { Joystick, LookArea, RoundBtn } from '../controls/TouchControls';
+import { TouchLayer, RoundBtn } from '../controls/TouchControls';
+import { TransformPanel, TransformReticle } from './TransformUI';
+import { canPaintStyle, canTransformStyle } from '@shared/constants';
 import { loadPreset } from '../characters/paint';
 import { sfx } from '../audio/sound';
 import { isSpectating } from './LocalPlayer';
@@ -46,7 +48,7 @@ function PhaseTimer() {
       sfx('tick');
     }
   }, [secs, room.phase]);
-  const label = { assign: 'Get ready', prep: 'Hide & paint!', hunt: 'Hunt', intermission: 'Next round', results: 'Results', lobby: '' }[room.phase];
+  const label = { assign: 'Get ready', prep: { paint: 'Hide & paint!', props: 'Hide & transform!', hybrid: 'Hide & disguise!' }[room.settings.hideStyle ?? 'paint'], hunt: 'Hunt', intermission: 'Next round', results: 'Results', lobby: '' }[room.phase];
   const urgent = secs <= 10 && room.phase !== 'results';
   return (
     <div className="flex flex-col items-center">
@@ -60,15 +62,24 @@ function PhaseTimer() {
   );
 }
 
-function objectiveText(me: PublicPlayer | undefined, phase: string, mode: string): string {
+function objectiveText(me: PublicPlayer | undefined, phase: string, mode: string, style: string = 'paint'): string {
   if (!me || me.team === 'none') return 'Spectating - you will join the next match';
   if (me.caught && me.team === 'hider' && mode !== 'everyone') return 'You were found! Spectating (Q to switch view)';
-  if (mode === 'everyone') return phase === 'prep' ? 'Paint yourself and pick a spot - your disguise becomes a statue!' : 'Find the other statues! Poke them to score';
+  if (mode === 'everyone') {
+    const how = style === 'props' ? 'TRANSFORM into an object' : style === 'hybrid' ? 'Paint yourself or TRANSFORM' : 'Paint yourself';
+    return phase === 'prep' ? `${how} and pick a spot - your disguise becomes a statue!` : 'Find the other statues! Poke them to score';
+  }
   if (me.team === 'hider') {
-    if (phase === 'prep') return 'Paint yourself to match a hiding spot, then strike a pose!';
+    if (phase === 'prep') {
+      if (style === 'props') return 'Aim at an object and TRANSFORM - then hide among the real ones!';
+      if (style === 'hybrid') return 'Paint yourself or TRANSFORM into an object - then hide!';
+      return 'Paint yourself to match a hiding spot, then strike a pose!';
+    }
+    if (me.disguise) return 'Blend in! Moving objects look suspicious...';
     return 'Stay still... your eyes close when you freeze. Survive!';
   }
-  if (phase === 'prep') return 'You are blindfolded while the hiders paint themselves...';
+  if (phase === 'prep') return style === 'paint' ? 'You are blindfolded while the hiders paint themselves...' : 'You are blindfolded while the hiders disguise themselves...';
+  if (style !== 'paint') return 'Hiders may be objects! Poke anything that looks out of place';
   return 'Find the hiders! Click / tap suspicious spots to poke them';
 }
 
@@ -222,7 +233,7 @@ function PauseMenu() {
             <Btn tone="mint" size="lg" onClick={() => set({ pauseOpen: false })}>Resume</Btn>
             <Btn tone="sky" onClick={() => setSettings(true)}>Settings</Btn>
             <div className="rounded-2xl bg-indigo-50 p-3 text-xs leading-relaxed">
-              <b>Controls:</b> V mic on/off · WASD move · Mouse look · Space jump · Shift sprint · E interact · P paint (prep) · 1-5 abilities · Click/F poke (seeker) · C pose · T chat · G emote · Q switch spectate · Esc pause
+              <b>Controls:</b> R transform · X change back · V mic on/off · WASD move · Mouse look · Space jump · Shift sprint · E interact · P paint (prep) · 1-5 abilities · Click/F poke (seeker) · C pose · T chat · G emote · Q switch spectate · Esc pause
             </div>
             <Btn tone="danger" onClick={async () => { await request('room:leave'); set({ room: null, pauseOpen: false }); go('menu'); }}>Leave Match</Btn>
           </div>
@@ -244,7 +255,7 @@ function AssignOverlay() {
         <div className={`rounded-[2rem] px-10 py-6 font-display text-5xl font-bold text-white shadow-2xl sm:text-7xl ${team === 'hider' ? 'bg-emerald-500' : team === 'seeker' ? 'bg-rose-500' : 'bg-slate-500'}`}>
           {room.settings.mode === 'everyone' ? 'EVERYONE HIDES!' : team === 'hider' ? 'YOU HIDE!' : team === 'seeker' ? 'YOU SEEK!' : 'SPECTATING'}
         </div>
-        <p className="mx-auto mt-3 max-w-md text-lg font-bold text-white drop-shadow">{objectiveText(me, 'prep', room.settings.mode)}</p>
+        <p className="mx-auto mt-3 max-w-md text-lg font-bold text-white drop-shadow">{objectiveText(me, 'prep', room.settings.mode, room.settings.hideStyle)}</p>
       </div>
     </div>
   );
@@ -358,7 +369,8 @@ export function HUD({ def }: { def: MapDef | null }) {
   if (!room) return null;
   const phase = room.phase;
   const spectating = isSpectating(me, room.settings.mode);
-  const canPaint = me?.team === 'hider' && phase === 'prep';
+  const canPaint = me?.team === 'hider' && phase === 'prep' && canPaintStyle(room.settings.hideStyle) && !me.disguise;
+  const canTransform = me?.team === 'hider' && !me.caught && (phase === 'prep' || phase === 'hunt') && canTransformStyle(room.settings.hideStyle);
   const seekerHunt = me?.team === 'seeker' && phase === 'hunt';
   const blind = me?.team === 'seeker' && (phase === 'prep') && room.settings.mode !== 'everyone';
   const canPose = me?.team === 'hider' && (phase === 'prep' || phase === 'hunt') && !me.caught;
@@ -366,7 +378,12 @@ export function HUD({ def }: { def: MapDef | null }) {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 select-none font-body">
-      {touch && !s.paintMode && !s.pauseOpen && phase !== 'results' && <LookArea tapToTag={seekerHunt} />}
+      {touch && !s.paintMode && !s.pauseOpen && phase !== 'results' && (
+        <TouchLayer
+          moveEnabled={!spectating && !hideHud}
+          onTap={(x, y) => { if (seekerHunt) input.tagAt = { x, y }; else if (canTransform) input.pickAt = { x, y }; }}
+        />
+      )}
 
       {!hideHud && (
         <>
@@ -381,7 +398,7 @@ export function HUD({ def }: { def: MapDef | null }) {
             {def && touch && <Minimap def={def} size={96} />}
           </div>
           <div className={`${touch && s.paintMode ? 'hidden' : ''} absolute left-1/2 top-[4.4rem] max-w-[38vw] -translate-x-1/2 rounded-2xl bg-black/45 px-3 py-1 text-center text-[10px] font-bold leading-tight text-white sm:top-[4.9rem] sm:max-w-[90vw] sm:rounded-full sm:px-4 sm:text-sm`}>
-            {objectiveText(me, phase, room.settings.mode)}
+            {objectiveText(me, phase, room.settings.mode, room.settings.hideStyle)}
           </div>
         </>
       )}
@@ -410,7 +427,7 @@ export function HUD({ def }: { def: MapDef | null }) {
       )}
 
       {/* hider paint prompt */}
-      {canPaint && !s.paintMode && (
+      {canPaint && !s.paintMode && !(touch && canTransform) && (
         <div className={`absolute left-1/2 -translate-x-1/2 ${touch ? 'top-[8.5rem]' : 'bottom-6'}`}>
           <Btn tone="pink" size={touch ? 'md' : 'lg'} className="pointer-events-auto whitespace-nowrap ring-4 ring-pink-200/70" onPointerDown={(e) => e.stopPropagation()} onClick={() => { exitLock(); s.set({ paintMode: true }); }}>
             🎨 Paint yourself {!touch && <span className="ml-1 rounded bg-white/30 px-1.5 text-sm">P</span>}
@@ -418,6 +435,19 @@ export function HUD({ def }: { def: MapDef | null }) {
         </div>
       )}
       {s.paintMode && canPaint && <PaintPanel />}
+
+      {/* object transformation */}
+      {canTransform && !s.paintMode && !s.pauseOpen && (
+        <>
+          <TransformReticle />
+          <div className={`absolute ${touch ? 'left-2 top-[9.5rem] scale-[0.88] origin-top-left' : 'bottom-24 left-5'}`}><TransformPanel
+            touch={touch}
+            extra={touch && canPaint ? (
+              <button data-testid="paint-btn-compact" onClick={() => { exitLock(); s.set({ paintMode: true }); }} className="rounded-full bg-pink-500 px-2.5 py-1 font-bold text-white shadow">🎨 Paint</button>
+            ) : undefined}
+          /></div>
+        </>
+      )}
 
       {/* abilities */}
       {!hideHud && !spectating && !(touch && s.paintMode) && (
@@ -428,7 +458,7 @@ export function HUD({ def }: { def: MapDef | null }) {
 
       {/* social buttons */}
       {!hideHud && !(touch && s.paintMode) && (
-        <div className={`pointer-events-auto absolute flex gap-2 ${touch ? 'left-3 top-36 flex-col' : 'bottom-5 left-5'}`} onPointerDown={(e) => e.stopPropagation()}>
+        <div className={`pointer-events-auto absolute flex gap-2 ${touch ? `left-3 flex-col ${canTransform && !s.paintMode ? 'top-[19rem]' : 'top-36'}` : canTransform ? 'bottom-5 left-[260px]' : 'bottom-5 left-5'}`} onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => s.set({ quickMenu: s.quickMenu === 'chat' ? 'none' : 'chat' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Quick chat">💬</button>
           <button onClick={() => s.set({ quickMenu: s.quickMenu === 'emote' ? 'none' : 'emote' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Emotes">😄</button>
           {canPose && <button onClick={() => s.set({ quickMenu: s.quickMenu === 'pose' ? 'none' : 'pose' })} className="grid h-11 w-11 place-items-center rounded-full bg-white/85 text-xl shadow" aria-label="Pose">🤸</button>}
@@ -441,7 +471,6 @@ export function HUD({ def }: { def: MapDef | null }) {
       {/* touch controls */}
       {touch && !s.paintMode && !hideHud && !spectating && (
         <>
-          <div className="pointer-events-none absolute bottom-6 left-6 safe-b"><Joystick /></div>
           <div className="pointer-events-none absolute bottom-6 right-24 flex items-end gap-4 safe-b">
             {seekerHunt && <RoundBtn size="lg" label="Poke" active onDown={() => { input.tag = true; }}>👆</RoundBtn>}
             <RoundBtn label="Sprint" active={s.settings && input.sprintHeld} onDown={() => { input.sprintHeld = true; }} onUp={() => { input.sprintHeld = false; }}>⚡</RoundBtn>

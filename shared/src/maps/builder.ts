@@ -1,6 +1,6 @@
 // Map construction helpers. Coordinates: y up, y passed to builders is the BOTTOM of the object.
 import type { TexId, Vec3 } from '../types';
-import type { InteractableDef, LightDef, PropDef } from './types';
+import type { InteractableDef, ItemDef, LightDef, PropDef } from './types';
 import { mulberry32 } from '../game-rules/rules';
 
 export interface Opts {
@@ -11,6 +11,8 @@ export interface Opts {
   group?: string;
   glow?: boolean;
   rot?: Vec3;
+  ceil?: boolean;
+  glass?: boolean;
 }
 
 /** Local frame for placing furniture: origin (x,z) + quarter turns r. */
@@ -18,6 +20,7 @@ export interface Frame { x: number; z: number; r: number }
 
 export class MapBuilder {
   props: PropDef[] = [];
+  items: ItemDef[] = [];
   interactables: InteractableDef[] = [];
   lights: LightDef[] = [];
   rand: () => number;
@@ -81,27 +84,59 @@ export class MapBuilder {
   }
 
   // ---- architecture ----
+  private floorN = 0;
   floorRect(x1: number, z1: number, x2: number, z2: number, c: string, tex: TexId = 'none', ts = 1) {
-    this.box((x1 + x2) / 2, 0, (z1 + z2) / 2, Math.abs(x2 - x1), 0.02, Math.abs(z2 - z1), c, { tex, ts, solid: false });
+    // later floor layers sit a few millimetres higher so overlapping areas never z-fight
+    this.box((x1 + x2) / 2, this.floorN++ * 0.004, (z1 + z2) / 2, Math.abs(x2 - x1), 0.02, Math.abs(z2 - z1), c, { tex, ts, solid: false });
   }
 
-  /** Axis-aligned wall with optional gaps {at: offset from start, w: width, h?: opening height (adds lintel)} */
-  wall(x1: number, z1: number, x2: number, z2: number, h: number, c: string, o: Opts & { t?: number; gaps?: { at: number; w: number; h?: number }[] } = {}) {
+  /** Detailed registry object (y = bottom). */
+  item(t: string, x: number, y: number, z: number, r = 0, c?: string, s?: number) {
+    const it: ItemDef = { t, p: [x, y, z], r };
+    if (c) it.c = c;
+    if (s) it.s = s;
+    this.items.push(it);
+    return it;
+  }
+  /** Item placed in a furniture frame (local coordinates, rotation follows the frame). */
+  fitem(f: Frame, t: string, lx: number, y: number, lz: number, r = 0, c?: string, s?: number) {
+    const [x, z] = this.tp(f, lx, lz);
+    return this.item(t, x, y, z, r + (f.r * Math.PI) / 2, c, s);
+  }
+  /** Ceiling / floor slab (box from y to y + t). */
+  ceiling(x1: number, z1: number, x2: number, z2: number, y: number, c: string, t = 0.18, tex: TexId = 'none') {
+    this.box((x1 + x2) / 2, y, (z1 + z2) / 2, Math.abs(x2 - x1), t, Math.abs(z2 - z1), c, { ceil: true, tex, ts: 2 });
+  }
+  /** Ceiling light panel + point light. */
+  ceilingLight(x: number, y: number, z: number, c = '#fff7e0', i = 6, dist = 11, group?: string) {
+    this.box(x, y - 0.06, z, 0.7, 0.06, 0.7, '#fffbeb', { glow: true, solid: false, group });
+    this.light([x, y - 0.4, z], c, i, dist, group);
+  }
+
+  /** Axis-aligned wall with optional gaps {at: offset from start, w: width, h?: opening top (adds lintel), sill?: window sill height (adds glass)} */
+  wall(x1: number, z1: number, x2: number, z2: number, h: number, c: string, o: Opts & { t?: number; y?: number; gaps?: { at: number; w: number; h?: number; sill?: number }[] } = {}) {
     const t = o.t ?? 0.25;
     const horizontal = Math.abs(z2 - z1) < 1e-6;
     const len = horizontal ? Math.abs(x2 - x1) : Math.abs(z2 - z1);
     const start = horizontal ? Math.min(x1, x2) : Math.min(z1, z2);
     const gaps = [...(o.gaps ?? [])].sort((a, b) => a.at - b.at);
     let cur = 0;
-    const seg = (a: number, b: number, y0: number, hh: number) => {
-      if (b - a < 0.01) return;
+    const base = o.y ?? 0;
+    const seg = (a: number, b: number, y0: number, hh: number, extra: Opts = {}, col = c, thick = t) => {
+      if (b - a < 0.01 || hh < 0.01) return;
       const mid = start + (a + b) / 2;
-      if (horizontal) this.box(mid, y0, z1, b - a, hh, t, c, { tex: o.tex, ts: o.ts });
-      else this.box(x1, y0, mid, t, hh, b - a, c, { tex: o.tex, ts: o.ts });
+      if (horizontal) this.box(mid, base + y0, z1, b - a, hh, thick, col, { tex: o.tex, ts: o.ts, ...extra });
+      else this.box(x1, base + y0, mid, thick, hh, b - a, col, { tex: o.tex, ts: o.ts, ...extra });
     };
     for (const g of gaps) {
       seg(cur, g.at, 0, h);
       if (g.h !== undefined && g.h < h) seg(g.at, g.at + g.w, g.h, h - g.h);
+      if (g.sill !== undefined) {
+        seg(g.at, g.at + g.w, 0, g.sill);
+        // window: frame + glass pane (solid, see-through)
+        seg(g.at, g.at + g.w, g.sill, (g.h ?? h) - g.sill, { glass: true, tex: 'none' }, '#bfe3ff', 0.05);
+        seg(g.at, g.at + g.w, g.sill - 0.06, 0.06, { tex: 'wood' }, '#f8fafc', t + 0.06);
+      }
       cur = g.at + g.w;
     }
     seg(cur, len, 0, h);

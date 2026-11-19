@@ -6,11 +6,13 @@ export type Team = 'hider' | 'seeker' | 'none';
 export type BattleSide = 'red' | 'blue';
 export type Phase = 'lobby' | 'assign' | 'prep' | 'hunt' | 'intermission' | 'results';
 export type ModeId = 'classic' | 'infection' | 'everyone' | 'teambattle' | 'chaos';
-export type MapId = 'house' | 'supermarket' | 'school' | 'toyworld' | 'factory';
+export type MapId = 'house' | 'supermarket' | 'school' | 'toyworld' | 'factory' | 'office' | 'restaurant';
+/** How hiders hide: paint camouflage, object transformation (prop hunt), or both. */
+export type HideStyle = 'paint' | 'props' | 'hybrid';
 
 export type PoseId = 'stand' | 'sit' | 'lie' | 'crouch' | 'curl' | 'starfish' | 'handstand' | 'flamingo' | 'peek';
 export type ShapeId = 'normal' | 'short' | 'tall' | 'wide' | 'slim';
-export type RegionId = 'body' | 'armL' | 'armR' | 'footL' | 'footR' | 'tail' | 'crest';
+export type RegionId = 'body' | 'head' | 'armL' | 'armR' | 'legL' | 'legR';
 export type PatternId =
   | 'solid' | 'stripes' | 'dots' | 'camo' | 'wood' | 'stone' | 'metal' | 'fabric' | 'checker' | 'brick' | 'noise';
 export type TexId =
@@ -46,6 +48,7 @@ export type PaintMsg =
 // ---------- Room / lobby ----------
 export interface RoomSettings {
   mapId: MapId;
+  hideStyle: HideStyle;
   mode: ModeId;
   prepTime: number; // seconds
   huntTime: number; // seconds
@@ -73,6 +76,10 @@ export interface PublicPlayer {
   finds: number;
   look: PlayerLook;
   voice: { on: boolean; mic: boolean };
+  /** Prop type the player is transformed into (object transformation), or null. */
+  disguise: string | null;
+  /** Colour and scale copied from the object the player transformed into. */
+  dLook?: { c: string | null; s: number };
 }
 
 export interface MatchResultPlayer {
@@ -159,6 +166,8 @@ export interface DecoyState {
   p: Vec3;
   r: number;
   look: PlayerLook;
+  disguise: string | null;
+  dLook?: { c: string | null; s: number };
   until: number;
 }
 
@@ -167,6 +176,8 @@ export interface StatueState {
   p: Vec3;
   r: number;
   look: PlayerLook;
+  disguise: string | null;
+  dLook?: { c: string | null; s: number };
   found: boolean;
 }
 
@@ -196,7 +207,8 @@ export type GameEvent =
   | { type: 'kicked' }
   | { type: 'infected'; playerId: string }
   | { type: 'notice'; text: string; tone?: 'info' | 'good' | 'bad' }
-  | { type: 'phase'; phase: Phase };
+  | { type: 'phase'; phase: Phase }
+  | { type: 'transform'; playerId: string; prop: string | null; p: Vec3 };
 
 // ---------- Profiles ----------
 export interface PlayerStats {

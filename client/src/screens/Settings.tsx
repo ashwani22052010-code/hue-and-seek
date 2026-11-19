@@ -32,8 +32,11 @@ export function SettingsBody({ compact }: { compact?: boolean }) {
       <Slider label="Voice chat" k="voice" />
       <h3 className="mt-2 font-display text-lg font-bold">🖥️ Graphics</h3>
       <div className="flex gap-2">
-        {(['low', 'high'] as const).map((q) => (
-          <button key={q} onClick={() => update({ quality: q })} className={`flex-1 rounded-xl py-2 text-sm font-bold ${s.quality === q ? 'bg-violet-600 text-white' : 'bg-indigo-50'}`}>{q === 'low' ? 'Performance (mobile)' : 'Quality (shadows)'}</button>
+        {(['low', 'medium', 'high'] as const).map((q) => (
+          <button key={q} onClick={() => update({ quality: q })} className={`flex-1 rounded-xl py-2 text-sm font-bold ${s.quality === q ? 'bg-violet-600 text-white' : 'bg-indigo-50'}`}>
+            {q === 'low' ? 'Low' : q === 'medium' ? 'Medium' : 'High'}
+            <div className="text-[10px] font-semibold opacity-70">{q === 'low' ? 'older phones' : q === 'medium' ? 'reflections' : 'shadows + sharp'}</div>
+          </button>
         ))}
       </div>
       <Toggle label="Show FPS" on={s.showFps} set={(v) => update({ showFps: v })} />
@@ -42,6 +45,13 @@ export function SettingsBody({ compact }: { compact?: boolean }) {
         <input type="range" min={30} max={250} value={Math.round(s.sensitivity * 100)} onChange={(e) => update({ sensitivity: +e.target.value / 100 })} className="flex-1" />
       </label>
       <Toggle label="Invert camera Y" on={s.invertY} set={(v) => update({ invertY: v })} />
+      <Toggle label="Invert camera X" on={s.invertX} set={(v) => update({ invertX: v })} />
+      <label className="flex items-center gap-3 text-sm font-bold"><span className="w-28">Joystick</span>
+        <input type="range" min={60} max={180} value={Math.round((s.joySens ?? 1) * 100)} onChange={(e) => update({ joySens: +e.target.value / 100 })} className="flex-1" />
+      </label>
+      <label className="flex items-center gap-3 text-sm font-bold"><span className="w-28">Touch camera</span>
+        <input type="range" min={40} max={250} value={Math.round((s.touchLook ?? 1) * 100)} onChange={(e) => update({ touchLook: +e.target.value / 100 })} className="flex-1" />
+      </label>
       <div className="flex items-center justify-between text-sm font-bold">Touch controls
         <select value={s.touch} onChange={(e) => update({ touch: e.target.value as S['touch'] })} className="rounded-xl border-2 border-indigo-200 px-2 py-1">
           <option value="auto">Auto</option><option value="on">Always on</option><option value="off">Off</option>

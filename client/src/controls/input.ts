@@ -10,6 +10,7 @@ export const input = {
   interact: false,
   tag: false,
   tagAt: null as null | { x: number; y: number }, // screen position for tap-to-tag
+  pickAt: null as null | { x: number; y: number }, // screen position for tap-to-select (transform target)
   sprintHeld: false,
   pointerLocked: false,
 };

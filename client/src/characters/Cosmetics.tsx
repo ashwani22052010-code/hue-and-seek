@@ -3,7 +3,8 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { Cosmetics } from '@shared/types';
-import { EYE_Y } from './geometry';
+// Cosmetic models are authored in the original (pre-redesign) coordinate space and fitted by HeadCosmetics/TorsoCosmetics.
+const EYE_Y = 0.7;
 
 function Hat({ id }: { id: string }) {
   const prop = useRef<THREE.Group>(null);
@@ -160,20 +161,30 @@ function Accessory({ id }: { id: string }) {
 export function ShoeView({ id }: { id: string }) {
   const col = id === 'sh_sneaker' ? '#f8fafc' : id === 'sh_boots' ? '#facc15' : id === 'sh_gold' ? '#f59e0b' : null;
   if (!col) return null;
+  const boots = id === 'sh_boots';
   return (
-    <mesh scale={[1.12, id === 'sh_boots' ? 1.5 : 1.08, 1.08]} position={[0, id === 'sh_boots' ? 0.03 : -0.01, 0]}>
-      <sphereGeometry args={[0.13, 12, 8, 0, Math.PI * 2, Math.PI / 2.4, Math.PI / 1.7]} />
-      <meshLambertMaterial color={col} side={THREE.DoubleSide} emissive={id === 'sh_gold' ? '#78350f' : '#000000'} />
+    <mesh position={[0, boots ? 0.012 : -0.004, 0.035]} scale={[1.12, boots ? 1.35 : 0.78, 1.66]}>
+      <sphereGeometry args={[0.062, 14, 10, 0, Math.PI * 2, Math.PI / 2.6, Math.PI / 1.6]} />
+      <meshStandardMaterial color={col} roughness={0.4} side={THREE.DoubleSide} metalness={id === 'sh_gold' ? 0.6 : 0} />
     </mesh>
   );
 }
 
-export function CosmeticsView({ c }: { c: Cosmetics }) {
+/** Hats and glasses, fitted to the slim character's head (rendered inside the head joint). */
+export function HeadCosmetics({ c }: { c: Cosmetics }) {
   return (
     <>
-      <Hat id={c.hat} />
-      <Glasses id={c.glasses} />
-      <Accessory id={c.accessory} />
+      <group scale={0.62} position={[0, -0.43, -0.03]}><Hat id={c.hat} /></group>
+      <group scale={0.62} position={[0, -0.414, -0.035]}><Glasses id={c.glasses} /></group>
     </>
   );
+}
+
+/** Scarf, bow tie, backpack, cape fitted to the torso (rendered inside the chest joint). */
+export function TorsoCosmetics({ c }: { c: Cosmetics }) {
+  return <group scale={0.5} position={[0, 0.25, -0.01]}><Accessory id={c.accessory} /></group>;
+}
+
+export function CosmeticsView({ c }: { c: Cosmetics }) {
+  return <HeadCosmetics c={c} />;
 }

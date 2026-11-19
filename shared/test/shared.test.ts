@@ -3,6 +3,7 @@ import { buildWorld, stepCharacter, isEmbedded, hasLineOfSight, type MoveState }
 import { getMapSync } from '../src/maps/all';
 import { buildMapWorld } from '../src/maps';
 import { MAP_IDS, SHAPES } from '../src/constants';
+import { PROPS } from '../src/props/registry';
 import { levelFromXp, xpForLevel, dailyMissionsFor } from '../src/game-rules/progression';
 import { sanitizePaintOp, validateName, pickSeekers, seekerCount } from '../src/game-rules/rules';
 
@@ -63,6 +64,11 @@ describe('maps', () => {
         expect(st.p[1]).toBeLessThan(0.5);
       }
       expect(def.interactables.length).toBeGreaterThan(0);
+      // every placed object is a registered type, and there are plenty of transform targets
+      for (const it of def.items) expect(PROPS[it.t], `unknown item ${it.t}`).toBeTruthy();
+      expect(def.items.filter((it) => PROPS[it.t].transformable).length).toBeGreaterThan(15);
+      // indoor maps are enclosed by a ceiling
+      expect(def.props.some((p) => p.ceil)).toBe(true);
     });
   }
 });
@@ -80,7 +86,7 @@ describe('rules', () => {
   it('sanitizes paint ops', () => {
     expect(sanitizePaintOp({ t: 's', g: 1, r: 'body', c: '#FFAA00', sz: 22, pat: 'solid', pts: [1, 2, 3, 4] })).toBeTruthy();
     expect(sanitizePaintOp({ t: 's', g: 1, r: 'body', c: 'red', sz: 22, pat: 'solid', pts: [1, 2] })).toBeNull();
-    expect(sanitizePaintOp({ t: 's', g: 1, r: 'head', c: '#ffaa00', sz: 22, pat: 'solid', pts: [1, 2] })).toBeNull();
+    expect(sanitizePaintOp({ t: 's', g: 1, r: 'tail', c: '#ffaa00', sz: 22, pat: 'solid', pts: [1, 2] })).toBeNull();
     expect(sanitizePaintOp({ t: 'f', g: 1, r: 'all', c: '#ffaa00', pat: 'wood' })).toBeTruthy();
   });
   it('validates names', () => {
@@ -94,5 +100,43 @@ describe('rules', () => {
     expect(seekerCount(8, 'classic')).toBe(2);
     const s = pickSeekers(['a', 'b', 'c'], 1, { a: 3, b: 0, c: 3 });
     expect(s).toEqual(['b']);
+  });
+});
+
+describe('collision (house)', () => {
+  const house = getMapSync('house');
+  const world = buildMapWorld(house);
+  const insideAnyWall = (p: number[], r: number, h: number) => isEmbedded(world, p as [number, number, number], r, h);
+  for (const [label, radius, height, speed] of [['character', 0.27, 1.34, 7.2], ['jug', 0.1, 0.3, 7.2], ['wide', 0.38, 1.28, 7.2]] as const) {
+    it(`${label}: sprinting into walls at 10 fps never clips through`, () => {
+      for (let trial = 0; trial < 40; trial++) {
+        const st: MoveState = { p: [-6, 0, -6.6], v: [0, 0, 0], grounded: true };
+        const a = (trial / 40) * Math.PI * 2;
+        for (let i = 0; i < 80; i++) {
+          stepCharacter(world, st, { x: Math.sin(a), z: Math.cos(a), jump: i % 9 === 0, sprint: true }, 0.1, { radius, height, speed });
+          expect(insideAnyWall(st.p, radius, height)).toBe(false);
+          // the living room is bounded by walls at x = 0 (except the doorway near z = 0) and z = -9 / 1
+          expect(st.p[2]).toBeGreaterThan(-9);
+          expect(st.p[1]).toBeGreaterThanOrEqual(0);
+        }
+      }
+    });
+  }
+  it('jumping under a ceiling never passes through the slab', () => {
+    const st: MoveState = { p: [2, 0, -5], v: [0, 0, 0], grounded: true };
+    let maxY = 0;
+    for (let i = 0; i < 200; i++) {
+      stepCharacter(world, st, { x: 0, z: 0, jump: true, sprint: false }, 1 / 30, { radius: 0.27, height: 1.34, speed: 4.6 });
+      maxY = Math.max(maxY, st.p[1] + 1.34);
+    }
+    expect(maxY).toBeLessThanOrEqual(3.0 + 0.01);
+  });
+  it('the staircase leads upstairs and you can walk back down', () => {
+    const st: MoveState = { p: [6.0, 0, 1.2], v: [0, 0, 0], grounded: true };
+    for (let i = 0; i < 240 && st.p[0] < 11.4; i++) stepCharacter(world, st, { x: 1, z: 0, jump: false, sprint: false }, 1 / 30, { radius: 0.27, height: 1.34, speed: 4.6 });
+    expect(st.p[1]).toBeCloseTo(3.2, 1);
+    for (let i = 0; i < 240 && st.p[0] > 6.2; i++) stepCharacter(world, st, { x: -1, z: 0, jump: false, sprint: false }, 1 / 30, { radius: 0.27, height: 1.34, speed: 4.6 });
+    for (let i = 0; i < 20; i++) stepCharacter(world, st, { x: 0, z: 0, jump: false, sprint: false }, 1 / 30, { radius: 0.27, height: 1.34, speed: 4.6 });
+    expect(st.p[1]).toBeLessThan(0.05);
   });
 });

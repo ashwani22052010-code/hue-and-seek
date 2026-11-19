@@ -2,6 +2,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type { GameEvent, PaintMsg, PaintOp, RoomState, Snapshot, Vec3, AbilityStatus, DecoyState, StatueState } from '@shared/types';
 import { INTERP_DELAY_MS, QUICK_CHAT, COSMETIC_BY_ID, MODES } from '@shared/constants';
+import { PROPS } from '@shared/props/registry';
 import { useStore } from '../store/useStore';
 import { paintFor, resetAllPaint } from '../characters/paint';
 import { sfx, playMusic } from '../audio/sound';
@@ -9,6 +10,7 @@ import { refreshProfile, saveToken } from './api';
 import { fx } from '../game/fxBus';
 import { registry } from '../game/registry';
 import { voice } from './voice';
+import { onTransformEvent } from '../game/transform';
 
 voice.bind((ev, data) => emit(ev, data), (ev, data) => request(ev, data));
 // leaving a room (any way) ends voice chat
@@ -176,14 +178,14 @@ function onPhaseChange(room: RoomState, prev: string | null) {
       chaosFx: null, pauseOpen: false, quickMenu: 'none', spectateIdx: 0, decoys: [], statues: [],
     });
     sfx('whoosh');
-    playMusic('prep');
+    playMusic('prep', room.settings.mapId);
   }
   if (room.phase === 'prep') sfx('start');
-  if (room.phase === 'hunt') { sfx('hunt'); playMusic('hunt'); st().set({ paintMode: false }); }
+  if (room.phase === 'hunt') { sfx('hunt'); playMusic('hunt', room.settings.mapId); st().set({ paintMode: false }); }
   if (room.phase === 'results' && prev !== 'results') {
     const me = room.results?.players.find((p) => p.id === st().myId);
     sfx(me?.won ? 'victory' : 'defeat');
-    playMusic('results');
+    playMusic('results', room.settings.mapId);
   }
   if (room.phase === 'intermission') sfx('whoosh');
 }
@@ -203,6 +205,10 @@ function handleEvent(e: GameEvent) {
   switch (e.type) {
     case 'notice':
       st.toast(e.text, e.tone ?? 'info');
+      break;
+    case 'transform':
+      onTransformEvent(e.p);
+      if (e.playerId === me) st.toast(e.prop ? `You are now a ${PROPS[e.prop]?.name ?? e.prop}!` : 'Back to your normal self', 'good');
       break;
     case 'caught': {
       fx.emit({ kind: 'caught', id: e.hiderId });

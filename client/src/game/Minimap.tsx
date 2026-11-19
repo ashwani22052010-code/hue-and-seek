@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { MapDef } from '@shared/maps';
-import { propAABB } from '@shared/maps';
+import { propAABB, itemAABB } from '@shared/maps';
+import { PROPS } from '@shared/props/registry';
 import { useStore } from '../store/useStore';
 import { registry } from './registry';
 import { sampleRemote } from '../multiplayer/net';
@@ -10,29 +11,45 @@ export function Minimap({ def, size = 150 }: { def: MapDef; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const base = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
+  const level = useRef(0);
+  const renderBase = (lvl: number) => {
     const b = def.bounds;
     const w = b.maxX - b.minX, d = b.maxZ - b.minZ;
     const scale = size / Math.max(w, d);
     const c = document.createElement('canvas');
     c.width = c.height = size;
     const ctx = c.getContext('2d')!;
-    ctx.fillStyle = def.floor.c;
+    ctx.fillStyle = '#334155';
     ctx.fillRect(0, 0, size, size);
-    const sorted = def.props.map((p, i) => ({ p, i, bb: propAABB(p) })).filter((x) => x.p.solid !== false || x.p.d[1] < 0.05).sort((a, b) => a.bb.max[1] - b.bb.max[1]);
+    // only the floor the player is on: skip ceilings and anything on other storeys
+    const lo = lvl - 0.2, hi = lvl + 2.6;
+    const sorted = def.props.map((p) => ({ p, bb: propAABB(p) }))
+      .filter((x) => !x.p.ceil && x.bb.min[1] >= lo - 0.05 && x.bb.min[1] < hi && (x.p.solid !== false || x.p.d[1] < 0.05))
+      .sort((a, b) => a.bb.max[1] - b.bb.max[1]);
     for (const { p, bb } of sorted) {
       ctx.fillStyle = p.c;
-      ctx.globalAlpha = p.solid === false ? 0.6 : 1;
+      ctx.globalAlpha = p.solid === false ? 0.75 : 1;
       ctx.fillRect((bb.min[0] - b.minX) * scale, (bb.min[2] - b.minZ) * scale, Math.max(1, (bb.max[0] - bb.min[0]) * scale), Math.max(1, (bb.max[2] - bb.min[2]) * scale));
+    }
+    for (const it of def.items) {
+      const t = PROPS[it.t];
+      if (!t || t.size[1] * (it.s ?? 1) < 0.3 || it.p[1] < lo - 0.05 || it.p[1] >= hi) continue;
+      const bb = itemAABB(it);
+      ctx.fillStyle = it.c ?? t.color;
+      ctx.fillRect((bb.min[0] - b.minX) * scale, (bb.min[2] - b.minZ) * scale, Math.max(1.5, (bb.max[0] - bb.min[0]) * scale), Math.max(1.5, (bb.max[2] - bb.min[2]) * scale));
     }
     ctx.globalAlpha = 1;
     base.current = c;
-  }, [def, size]);
+  };
+  useEffect(() => { level.current = 0; renderBase(0); }, [def, size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const id = setInterval(() => {
       const c = ref.current, bc = base.current;
       if (!c || !bc) return;
+      // switch the drawn storey when the player changes floors
+      const lvl = registry.local.p[1] > 2.4 ? Math.round(registry.local.p[1] / 3.2) * 3.2 : 0;
+      if (lvl !== level.current) { level.current = lvl; renderBase(lvl); }
       const ctx = c.getContext('2d')!;
       const s = useStore.getState();
       const b = def.bounds;

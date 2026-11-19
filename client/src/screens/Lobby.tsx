@@ -8,6 +8,48 @@ import { Btn, Modal, Panel } from '../ui/kit';
 import { LobbyLineup } from '../characters/CharacterPreview';
 import { playMusic, sfx } from '../audio/sound';
 import { VoiceBar } from '../ui/Voice';
+import { HIDE_STYLES, HIDE_STYLE_IDS, DEFAULT_COSMETICS } from '@shared/constants';
+import type { HideStyle } from '@shared/types';
+import { PropPreview } from '../game/TransformUI';
+import { CharacterPreview } from '../characters/CharacterPreview';
+
+const PREVIEW_PROPS = ['jug', 'chair', 'floorlamp', 'teddy', 'plant', 'kettle', 'ball', 'trashbin'];
+const PREVIEW_COLORS = ['col_lilac', 'col_mint', 'col_peach', 'col_sky', 'col_lemon', 'col_rose'];
+
+function StylePreview({ style }: { style: HideStyle }) {
+  const [i, setI] = useState(0);
+  useEffect(() => { const id = setInterval(() => setI((n) => n + 1), 1600); return () => clearInterval(id); }, []);
+  const showProp = style === 'props' || (style === 'hybrid' && i % 2 === 1);
+  return showProp
+    ? <PropPreview key={PREVIEW_PROPS[i % PREVIEW_PROPS.length]} type={PREVIEW_PROPS[i % PREVIEW_PROPS.length]} className="h-28 w-full" />
+    : <CharacterPreview cosmetics={{ ...DEFAULT_COSMETICS, hat: 'hat_none', color: PREVIEW_COLORS[i % PREVIEW_COLORS.length] }} zoom={2.6} className="h-28 w-full" />;
+}
+
+function HideStyleCards({ value, editable, onPick }: { value: HideStyle; editable: boolean; onPick: (s: HideStyle) => void }) {
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" data-testid="hide-styles">
+      {HIDE_STYLE_IDS.map((id) => {
+        const st = HIDE_STYLES[id];
+        const on = value === id;
+        return (
+          <button key={id} disabled={!editable && !on} onClick={() => editable && onPick(id)}
+            className={`group relative overflow-hidden rounded-3xl p-3 text-left transition-all duration-300 ${on ? 'scale-[1.02] text-white shadow-xl ring-4 ring-white/70' : 'bg-white/80 text-indigo-950 hover:-translate-y-1 hover:shadow-lg'} ${!editable && !on ? 'opacity-60' : ''}`}
+            style={on ? { background: `linear-gradient(135deg, ${st.color}, #1e1b4b)` } : undefined}>
+            <div className="flex items-center gap-2">
+              <span className={`text-3xl ${on ? 'animate-floaty' : ''}`}>{st.icon}</span>
+              <div>
+                <div className="font-display text-lg font-bold leading-tight">{st.name}</div>
+                <div className="text-xs font-bold opacity-80">{st.tagline}</div>
+              </div>
+            </div>
+            {on && <div className="mt-2 rounded-2xl bg-white/15"><StylePreview style={id} /></div>}
+            {on && <p className="mt-1 text-[11px] font-semibold opacity-90">{st.description}</p>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function InviteFriends({ onClose }: { onClose: () => void }) {
   const [friends, setFriends] = useState<FriendEntry[] | null>(null);
@@ -129,6 +171,10 @@ export function Lobby() {
         </div>
 
         <div className="flex flex-col gap-3">
+          <Panel className="p-3">
+            <h3 className="mb-2 font-display text-lg font-bold">How do hiders hide? {!isHost && <span className="text-xs opacity-50">(host picks)</span>}</h3>
+            <HideStyleCards value={settings.hideStyle} editable={isHost && !inMatch} onPick={(hs) => change({ hideStyle: hs })} />
+          </Panel>
           <Panel className="p-3">
             <h3 className="mb-2 font-display text-lg font-bold">Map {!isHost && <span className="text-xs opacity-50">(host picks)</span>}</h3>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

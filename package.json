@@ -10,11 +10,13 @@
     "start": "npm run start -w server",
     "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p client --noEmit",
     "test": "vitest run",
-    "test:integration": "node e2e/server.integration.mjs",
-    "test:modes": "node e2e/modes.integration.mjs",
+    "test:integration": "tsx e2e/server.integration.mjs",
+    "test:modes": "tsx e2e/modes.integration.mjs",
+    "test:props": "tsx e2e/props.integration.mjs",
     "test:voice": "node e2e/voice.e2e.mjs",
-    "test:e2e": "npm run build -w client && node e2e/multiplayer.e2e.mjs",
-    "test:all": "npm test && npm run test:integration && npm run test:modes && npm run test:e2e",
+    "test:e2e": "npm run build -w client && node e2e/multiplayer.e2e.mjs && tsx e2e/props.e2e.mjs",
+    "test:props:e2e": "tsx e2e/props.e2e.mjs",
+    "test:all": "npm test && npm run test:integration && npm run test:modes && npm run test:props && npm run test:e2e && npm run test:voice",
     "gallery": "node e2e/gallery.mjs"
   },
   "devDependencies": {

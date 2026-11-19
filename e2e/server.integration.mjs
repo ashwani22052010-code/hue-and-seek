@@ -6,6 +6,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { io } from 'socket.io-client';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { physWalk, HOUSE } from './physwalk.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = process.env.TEST_PORT || 3999;
@@ -169,12 +170,12 @@ async function run() {
   await waitFor(() => hider.corrections.length > c0, 2000, 'teleport correction');
   ok(true, 'teleport attempt corrected by server');
   const sc0 = seeker.corrections.length;
-  seeker.s.emit('move', { p: [seeker.spawn[0] + 1, 0, seeker.spawn[2]], r: 0, f: 1, s: 1 });
+  seeker.s.emit('move', { p: [seeker.spawn[0] + 1, seeker.spawn[1], seeker.spawn[2]], r: 0, f: 1, s: 1 });
   await waitFor(() => seeker.corrections.length > sc0, 2000, 'seeker frozen');
   ok(true, 'seeker cannot move during prep');
 
   // hider walks to a spot next to the kitchen gap
-  const hp = await walk(hider, hider.spawn, [[-9, 0, -7.6], [0.6, 0, -7.6], [0.9, 0, -5.0]]);
+  const hp = await physWalk(hider, 'house', [[-4.6, 0, -6.0]]);
   ok(hider.corrections.length === c0 + 1, `legit hider walk accepted (no extra corrections) -> [${hp.map((v) => v.toFixed(1))}]`);
   hider.s.emit('look', { pose: 'crouch', shape: 'short' });
   await waitFor(() => A.state.players.find((p) => p.id === hiderId)?.look.shape === 'short', 2000, 'look update');
@@ -188,12 +189,12 @@ async function run() {
   ok(true, 'hider now visible to seeker in snapshots');
 
   // seeker misses first (poke empty floor), then approaches and tags
-  seeker.s.emit('tag', { p: [seeker.spawn[0] + 1, 0.01, seeker.spawn[2]] });
+  seeker.s.emit('tag', { p: [seeker.spawn[0] + 1, seeker.spawn[1] + 0.01, seeker.spawn[2]] });
   await waitFor(() => seeker.events.some((e) => e.type === 'miss'), 2000, 'miss event');
   ok(true, 'missed poke registered with cooldown');
-  const sp = await walk(seeker, seeker.spawn, [[3.4, 0, -6.5], [2.6, 0, -5.2]], 6.5);
+  const sp = await physWalk(seeker, 'house', [...HOUSE.atticToHall, ...HOUSE.hallToLiving, [-3.4, 0, -6.0]], { speed: 6.5 });
   await sleep(1300); // wait out miss cooldown
-  seeker.s.emit('tag', { p: [0.9, 0.4, -5.0] });
+  seeker.s.emit('tag', { p: [hp[0], 0.4, hp[2]] });
   await waitFor(() => seeker.events.some((e) => e.type === 'caught'), 3000, 'caught');
   ok(true, `seeker tagged hider from [${sp.map((v) => v.toFixed(1))}]`);
 

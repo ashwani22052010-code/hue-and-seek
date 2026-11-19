@@ -7,6 +7,8 @@ import { SHAPES } from '@shared/constants';
 import { useStore } from '../store/useStore';
 import { sampleRemote, serverClock } from '../multiplayer/net';
 import { Hueling, newLive } from '../characters/Hueling';
+import { PropView } from '../props/PropView';
+import { propCollider } from '@shared/props/registry';
 import { paintFor } from '../characters/paint';
 import { registry } from './registry';
 import { sfx } from '../audio/sound';
@@ -68,6 +70,11 @@ function RemotePlayer({ p, showName }: { p: PublicPlayer; showName: boolean }) {
     if (e.kind === 'emote' && e.id === p.id) { live.current.anim = e.emote; live.current.animStart = performanceNowSec(); setTimeout(() => { if (live.current.anim === e.emote) live.current.anim = null; }, 2600); }
   }), [p.id]);
   useEffect(() => () => { registry.characters.delete(p.id); }, [p.id]);
+  useEffect(() => {
+    if (phase !== 'results') { if (live.current.anim?.startsWith('vic_') || live.current.anim === 'defeat') live.current.anim = null; return; }
+    const mine = useStore.getState().room?.results?.players.find((x) => x.id === p.id);
+    if (mine) { live.current.anim = mine.won ? p.cosmetics.victory : 'defeat'; live.current.animStart = performanceNowSec(); }
+  }, [phase, p.id, p.cosmetics.victory]);
 
   useFrame((_, dt) => {
     const s = sampleRemote(p.id);
@@ -75,8 +82,12 @@ function RemotePlayer({ p, showName }: { p: PublicPlayer; showName: boolean }) {
     if (!s) { g.visible = false; return; }
     g.visible = true;
     g.position.set(s.p[0], s.p[1], s.p[2]);
-    g.rotation.y = s.yaw;
     const L = live.current;
+    let dy = s.yaw - g.rotation.y;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    L.turn = THREE.MathUtils.lerp(L.turn, dy / Math.max(dt, 1e-3), Math.min(1, dt * 6));
+    g.rotation.y = s.yaw;
     L.moving = !!(s.f & FLAG_MOVING);
     L.sprint = !!(s.f & FLAG_SPRINT);
     L.grounded = !!(s.f & FLAG_GROUNDED);
@@ -100,11 +111,15 @@ function RemotePlayer({ p, showName }: { p: PublicPlayer; showName: boolean }) {
     }
   });
 
-  const h = SHAPES[p.look.shape].height;
+  const h = p.disguise ? propCollider(p.disguise, p.dLook?.s ?? 1).height : SHAPES[p.look.shape].height;
   const showCos = p.team !== 'hider' || phase === 'results';
   return (
     <group ref={group} visible={false}>
-      <Hueling look={p.look} cosmetics={p.cosmetics} showCosmetics={showCos} paint={paint} live={live.current} onMeshes={onMeshes} userData={userData} />
+      {p.disguise ? (
+        <PropView type={p.disguise} color={p.dLook?.c} scale={p.dLook?.s ?? 1} onMeshes={onMeshes} userData={userData} />
+      ) : (
+        <Hueling look={p.look} cosmetics={p.cosmetics} showCosmetics={showCos} paint={paint} live={live.current} onMeshes={onMeshes} userData={userData} />
+      )}
       {showName && <Label text={p.name} bg={p.team === 'seeker' ? 'rgba(239,68,68,0.9)' : p.team === 'hider' ? 'rgba(34,197,94,0.9)' : 'rgba(30,27,75,0.8)'} y={h + 0.55} />}
       <Bubble playerId={p.id} y={h + 1.0} />
     </group>
@@ -130,7 +145,7 @@ export function RemotePlayers() {
 }
 
 // ---------- decoys & statues ----------
-function StaticCopy({ id, ownerId, pos, yaw, look, kind, found }: { id: string; ownerId: string; pos: [number, number, number]; yaw: number; look: DecoyState['look']; kind: 'decoy' | 'statue'; found?: boolean }) {
+function StaticCopy({ id, ownerId, pos, yaw, look, kind, found, disguise, dLook }: { id: string; ownerId: string; pos: [number, number, number]; yaw: number; look: DecoyState['look']; kind: 'decoy' | 'statue'; found?: boolean; disguise?: string | null; dLook?: DecoyState['dLook'] }) {
   const live = useMemo(() => { const l = newLive(); l.eyesClosed = true; return l; }, []);
   const owner = useStore((s) => s.room?.players.find((p) => p.id === ownerId));
   const onMeshes = useCallback((m: THREE.Mesh[]) => registry.extras.set(id, m), [id]);
@@ -140,7 +155,11 @@ function StaticCopy({ id, ownerId, pos, yaw, look, kind, found }: { id: string; 
   if (!owner) return null;
   return (
     <group position={pos} rotation={[0, yaw, 0]}>
-      <Hueling look={look} cosmetics={owner.cosmetics} showCosmetics={false} paint={paintFor(ownerId).texture} live={live} onMeshes={found ? undefined : onMeshes} userData={userData} />
+      {disguise ? (
+        <PropView type={disguise} color={dLook?.c} scale={dLook?.s ?? 1} animate={false} onMeshes={found ? undefined : onMeshes} userData={userData} />
+      ) : (
+        <Hueling look={look} cosmetics={owner.cosmetics} showCosmetics={false} paint={paintFor(ownerId).texture} live={live} onMeshes={found ? undefined : onMeshes} userData={userData} />
+      )}
       {found && <Label text={`Found: ${owner.name}`} bg="rgba(239,68,68,0.9)" y={1.6} />}
     </group>
   );
@@ -152,9 +171,9 @@ export function DecoysAndStatues() {
   const myId = useStore((s) => s.myId);
   return (
     <>
-      {decoys.map((d) => <StaticCopy key={d.id} id={'decoy:' + d.id} ownerId={d.ownerId} pos={d.p} yaw={d.r} look={d.look} kind="decoy" />)}
+      {decoys.map((d) => <StaticCopy key={d.id} id={'decoy:' + d.id} ownerId={d.ownerId} pos={d.p} yaw={d.r} look={d.look} disguise={d.disguise} dLook={d.dLook} kind="decoy" />)}
       {statues.map((s: StatueState) => (
-        <StaticCopy key={s.ownerId} id={'statue:' + s.ownerId} ownerId={s.ownerId} pos={s.p} yaw={s.r} look={s.look} kind="statue" found={s.found || undefined} />
+        <StaticCopy key={s.ownerId} id={'statue:' + s.ownerId} ownerId={s.ownerId} pos={s.p} yaw={s.r} look={s.look} disguise={s.disguise} dLook={s.dLook} kind="statue" found={s.found || undefined} />
       ))}
       {statues.filter((s) => s.ownerId === myId && !s.found).map((s) => (
         <group key="mine" position={[s.p[0], s.p[1] + 1.7, s.p[2]]}><Label text="Your statue" bg="rgba(124,58,237,0.9)" y={0} /></group>

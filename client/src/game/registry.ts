@@ -9,6 +9,7 @@ export const registry = {
   world: null as CollisionWorld | null,
   built: null as BuiltMap | null,
   mapMeshes: [] as THREE.Object3D[],
+  itemMeshes: [] as THREE.Object3D[], // detailed objects (transform targets)
   characters: new Map<string, THREE.Mesh[]>(), // playerId -> paintable meshes
   extras: new Map<string, THREE.Mesh[]>(), // decoys / statues
   disabledGroups: new Set<string>(),

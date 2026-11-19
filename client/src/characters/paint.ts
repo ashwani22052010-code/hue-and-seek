@@ -1,10 +1,10 @@
 // Per-player paint atlas. Ops are replayed deterministically on every client (same as the server log).
 import * as THREE from 'three';
 import type { PaintMsg, PaintOp, PatternId, RegionId } from '@shared/types';
-import { PAINT_ATLAS_SIZE, REGIONS } from '@shared/constants';
+import { PAINT_ATLAS_SIZE, REGIONS, REGION_IDS } from '@shared/constants';
 import { colorTile } from '../maps/textures';
 
-export const PATTERN_SCALE = 1.75;
+export const PATTERN_SCALE = 2.0;
 const S = PAINT_ATLAS_SIZE;
 
 function regionPx(r: RegionId) {
@@ -162,7 +162,10 @@ const PRESET_KEY = 'hue.presets';
 export function loadPreset(): PaintOp[] | null {
   try {
     const raw = localStorage.getItem(PRESET_KEY);
-    return raw ? (JSON.parse(raw) as PaintOp[]) : null;
+    if (!raw) return null;
+    // presets saved for the previous character layout may reference regions that no longer exist
+    const ops = (JSON.parse(raw) as PaintOp[]).filter((o) => o.t === 'x' || o.r === 'all' || REGION_IDS.includes(o.r as RegionId));
+    return ops.length ? ops : null;
   } catch {
     return null;
   }

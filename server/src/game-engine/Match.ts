@@ -9,13 +9,14 @@ import {
 } from '@shared/types';
 import {
   ABILITIES, ASSIGN_TIME, DECOY_PENALTY_MS, HIDER_ABILITIES, INTERMISSION_TIME, MODES, PAINT_MAX_OPS, PHYS, POSE_IDS,
-  RESULTS_TIME, SCANNER_RANGE, SEEKER_ABILITIES, SHAPE_IDS, SOUND_RANGE, TAG_HIT_RADIUS, TAG_MISS_COOLDOWN_MS, TAG_RANGE,
+  RESULTS_TIME, SCANNER_RANGE, TRANSFORM_RANGE, TRANSFORM_COOLDOWN_HUNT_MS, TRANSFORM_COOLDOWN_PREP_MS, canPaintStyle, canTransformStyle, SEEKER_ABILITIES, SHAPE_IDS, SOUND_RANGE, TAG_HIT_RADIUS, TAG_MISS_COOLDOWN_MS, TAG_RANGE,
 } from '@shared/constants';
 import { hasLineOfSight, isEmbedded, type CollisionWorld } from '@shared/game-rules/physics';
 import { pickSeekers, sanitizePaintOp, seekerCount, splitSides } from '@shared/game-rules/rules';
 import { computeReward } from '@shared/game-rules/progression';
 import { buildMapWorld, nearestPropColor, type MapDef } from '@shared/maps';
 import { getMapSync } from '@shared/maps/all';
+import { PROPS, propCollider } from '@shared/props/registry';
 import type { Room } from '../rooms/Room';
 import type { RoomPlayer } from '../rooms/RoomPlayer';
 import { recordMatch, type AwardEntry } from '../database/repo';
@@ -183,11 +184,12 @@ export class Match {
       // Freeze everyone's disguise into a statue, then everybody becomes a seeker.
       let i = 0;
       for (const p of this.participants().filter((x) => x.connected)) {
-        this.statues.set(p.id, { ownerId: p.id, p: [...p.pos], r: p.yaw, look: { ...p.look }, found: false });
+        this.statues.set(p.id, { ownerId: p.id, p: [...p.pos], r: p.yaw, look: { ...p.look }, disguise: p.disguise, dLook: { ...p.dLook }, found: false });
+        p.disguise = null;
         p.team = 'seeker';
         const sp = this.map.seekerSpawns[i % this.map.seekerSpawns.length];
         const j = i >= this.map.seekerSpawns.length ? 0.7 : 0;
-        this.teleport(p, [sp[0] + (Math.random() - 0.5) * j, 0, sp[2] + (Math.random() - 0.5) * j]);
+        this.teleport(p, [sp[0] + (Math.random() - 0.5) * j, sp[1], sp[2] + (Math.random() - 0.5) * j]);
         p.look = { pose: 'stand', shape: 'normal' };
         i++;
       }
@@ -451,7 +453,7 @@ export class Match {
     let s = PHYS.sprintSpeed;
     if (p.team === 'hider' && this.phase === 'hunt' && this.mode !== 'everyone') s = PHYS.hiderHuntSpeed;
     if (p.active('speed', now)) s *= PHYS.seekerSpeedBoost;
-    return s;
+    return s * p.propSpeed;
   }
 
   private canMove(p: RoomPlayer, now: number) {
@@ -523,9 +525,50 @@ export class Match {
     this.room.markDirty();
   }
 
+  // ======================= object transformation =======================
+  /** Validate and apply a transform request. Returns an error message or null. */
+  handleTransform(p: RoomPlayer, req: { item?: number; revert?: boolean }): string | null {
+    const now = Date.now();
+    if (!p.inMatch || p.spectating || p.team !== 'hider') return 'Only hiders can transform';
+    if (!canTransformStyle(this.room.settings.hideStyle)) return 'Object transformation is off in this match';
+    if (this.phase !== 'prep' && this.phase !== 'hunt') return 'You can only transform while hiding';
+    if (now < p.transformReadyAt) return `Transform recharging (${Math.ceil((p.transformReadyAt - now) / 1000)}s)`;
+    let target: string | null = null;
+    let look = { c: null as string | null, s: 1 };
+    if (!req.revert) {
+      const idx = req.item;
+      if (idx === undefined || !Number.isInteger(idx) || idx < 0 || idx >= this.map.items.length) return 'Unknown object';
+      const it = this.map.items[idx];
+      const type = PROPS[it.t];
+      if (!type?.transformable) return "You can't turn into that";
+      const s = it.s ?? 1;
+      const center: Vec3 = [it.p[0], it.p[1] + (type.size[1] * s) / 2, it.p[2]];
+      const eye: Vec3 = [p.pos[0], p.pos[1] + Math.max(0.15, p.height * 0.8), p.pos[2]];
+      const reach = Math.max(type.size[0], type.size[2]) * s * 0.5;
+      if (dist3(eye, center) > TRANSFORM_RANGE + reach) return 'Too far away - get closer';
+      if (!hasLineOfSight(this.world, eye, center, this.disabledGroups, reach + 0.25)) return "You can't reach it through a wall";
+      target = it.t;
+      look = { c: it.c ?? null, s: it.s ?? 1 };
+    } else if (!p.disguise) return null;
+    if (target === p.disguise && look.c === p.dLook.c && look.s === p.dLook.s) return null;
+    const prev = p.disguise, prevLook = p.dLook;
+    p.disguise = target;
+    p.dLook = look;
+    if (isEmbedded(this.world, p.pos, p.radius, p.bodyHeight, this.disabledGroups)) {
+      p.disguise = prev;
+      p.dLook = prevLook;
+      return 'Not enough room here to transform';
+    }
+    p.transformReadyAt = now + (this.phase === 'prep' ? TRANSFORM_COOLDOWN_PREP_MS : TRANSFORM_COOLDOWN_HUNT_MS);
+    const ev = { type: 'transform', playerId: p.id, prop: target, p: [...p.pos] as Vec3 } satisfies GameEvent;
+    this.room.emitAll('event', ev, (v) => !(this.phase === 'prep' && v.id !== p.id && (v.team === 'seeker' || !v.inMatch)));
+    this.room.markDirty();
+    return null;
+  }
+
   // ======================= painting =======================
   private canPaint(p: RoomPlayer) {
-    return p.inMatch && !p.spectating && p.team === 'hider' && this.phase === 'prep';
+    return p.inMatch && !p.spectating && p.team === 'hider' && this.phase === 'prep' && canPaintStyle(this.room.settings.hideStyle) && !p.disguise;
   }
 
   handlePaint(p: RoomPlayer, msg: PaintMsg): boolean {
@@ -602,7 +645,8 @@ export class Match {
     if (this.mode === 'everyone') {
       for (const s of this.statues.values()) {
         if (s.found || s.ownerId === seeker.id) continue;
-        targets.push({ kind: 'statue', s, d: distToBody(s.p, 0.45, 1.1) });
+        const col = s.disguise ? propCollider(s.disguise, s.dLook?.s ?? 1) : { radius: 0.3, height: 1.34 };
+        targets.push({ kind: 'statue', s, d: distToBody(s.p, col.radius, col.height) });
       }
     } else {
       for (const h of this.participants()) {
@@ -666,6 +710,7 @@ export class Match {
       h.infected = true;
       h.abilities.clear();
       h.look = { pose: 'stand', shape: 'normal' };
+      h.disguise = null;
       const sp = this.map.seekerSpawns[Math.floor(Math.random() * this.map.seekerSpawns.length)];
       this.teleport(h, [...sp]);
       this.room.emitAll('event', { type: 'infected', playerId: h.id } satisfies GameEvent);
@@ -681,7 +726,8 @@ export class Match {
   // ======================= abilities =======================
   private abilityList(p: RoomPlayer): AbilityId[] {
     if (!p.inMatch || p.spectating) return [];
-    const base = p.team === 'hider' ? HIDER_ABILITIES : p.team === 'seeker' ? SEEKER_ABILITIES : [];
+    let base = p.team === 'hider' ? HIDER_ABILITIES : p.team === 'seeker' ? SEEKER_ABILITIES : [];
+    if (!canPaintStyle(this.room.settings.hideStyle)) base = base.filter((id) => id !== 'quickdisguise');
     const bonus = [...p.abilities.entries()].filter(([id, a]) => ABILITIES[id].bonus && (a.charges ?? 0) > 0).map(([id]) => id);
     return [...base, ...bonus];
   }
@@ -708,7 +754,7 @@ export class Match {
     switch (id) {
       case 'decoy': {
         for (const [k, d] of this.decoys) if (d.ownerId === p.id) this.decoys.delete(k);
-        const dec: DecoyState = { id: crypto.randomUUID().slice(0, 8), ownerId: p.id, p: [...p.pos], r: p.yaw, look: { ...p.look }, until: now + def.durationMs };
+        const dec: DecoyState = { id: crypto.randomUUID().slice(0, 8), ownerId: p.id, p: [...p.pos], r: p.yaw, look: { ...p.look }, disguise: p.disguise, dLook: { ...p.dLook }, until: now + def.durationMs };
         this.decoys.set(dec.id, dec);
         this.room.emitAll('decoys', [...this.decoys.values()]);
         break;

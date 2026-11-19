@@ -102,6 +102,27 @@ export function buildFactory(): MapDef {
   b.interact({ id: 'lamp_hall', kind: 'lamp', label: 'Main Lights', p: [9.4, 1.2, 0.5], defaultActive: true });
   b.box(9.85, 1, 0.5, 0.1, 0.4, 0.3, '#ef4444', { solid: false });
 
+
+  // ---------- roof, lights, objects ----------
+  b.ceiling(-20, -16, 20, 16, H, '#57534e', 0.3, 'metal');
+  for (let x = -16; x <= 16; x += 8) b.box(x, H - 0.3, 0, 0.4, 0.3, 32, '#44403c', { tex: 'metal', solid: false }); // roof beams
+  for (const [x, z] of [[-6, -10], [-6, 10], [6, -12]] as const) b.item('barrel', x, 0, z, 0, b.pick(['#1d4ed8', '#15803d', '#b91c1c']));
+  for (const [x, z] of [[-11, -6.8], [-10.3, -7.2], [8, 13.4]] as const) b.item('crate', x, 0, z, 0.2, '#92400e');
+  for (const [x, z] of [[-2.4, 9.2], [-1.8, 9.6], [-16.2, -2.6]] as const) b.item('cardbox', x, 0, z, 0.4, '#c8a26b');
+  for (const [x, z] of [[-9.3, 7.4], [6.8, -2.6], [-17.6, -12.6]] as const) b.item('toolbox', x, 0, z, 0.7, b.pick(['#dc2626', '#2563eb']));
+  for (const [x, z] of [[1.6, -3.0], [1.6, 3.0], [-0.4, -13.8]] as const) b.item('cone', x, 0, z, 0, '#f97316');
+  for (const [x, z] of [[-13.2, 13.4], [7.2, -13.2]] as const) b.item('paintcan', x, 0, z, 0, b.pick(['#f8fafc', '#ef4444', '#facc15']));
+  b.item('bucket', -8.6, 0, -13.6, 0, '#64748b');
+  b.item('filecabinet', 18.9, 0, 10.6, -Math.PI / 2, '#64748b');
+  b.item('officechair', 15, 0, 13.4, Math.PI, '#1e293b');
+  b.item('monitor', 15.4, 0.78, 15.1, Math.PI);
+  b.item('phone', 14.3, 0.78, 14.9, Math.PI, '#1f2937');
+  b.item('mug', 16.2, 0.78, 14.7, 0, '#f97316');
+  b.item('trashbin', 12.6, 0, 15.2, 0, '#475569');
+  b.item('watercooler', 11.0, 0, 13.6, 0, '#f8fafc');
+  b.item('clock', -8, 3.6, -15.84, 0, '#f8fafc');
+  b.item('plant', 18.6, 0, 4.8, 0, '#57534e');
+
   return {
     id: 'factory',
     bounds: { minX: -20, maxX: 20, minZ: -16, maxZ: 16 },
@@ -114,6 +135,7 @@ export function buildFactory(): MapDef {
     hiderSpawns: [[-1, 0, -8], [1, 0, -8], [-3, 0, -8], [3, 0, -8], [-1, 0, -10], [1, 0, -10], [-3, 0, -10], [3, 0, -10]],
     seekerSpawns: [[6, 0, 13], [7.5, 0, 13], [6, 0, 14.6], [7.5, 0, 14.6]],
     props: b.props,
+    items: b.items,
     interactables: b.interactables,
     lights: b.lights,
   };

@@ -2,6 +2,7 @@ import type {
   AbilityId, BattleSide, Cosmetics, PaintOp, PlayerLook, PublicPlayer, Team, Vec3,
 } from '@shared/types';
 import { POSES, SHAPES } from '@shared/constants';
+import { PROPS, propCollider } from '@shared/props/registry';
 import { SocketLimiter } from '../security/rateLimit';
 
 export interface Identity {
@@ -32,6 +33,9 @@ export class RoomPlayer {
   disconnectedAt = 0;
   ready = false;
   voiceOn = false;
+  disguise: string | null = null;
+  dLook: { c: string | null; s: number } = { c: null, s: 1 };
+  transformReadyAt = 0;
   micOn = false;
   limiter = new SocketLimiter();
   joinedAt = Date.now();
@@ -89,6 +93,8 @@ export class RoomPlayer {
     this.caughtAt = 0;
     this.roundFinds = 0;
     this.look = { pose: 'stand', shape: 'normal' };
+    this.disguise = null;
+    this.transformReadyAt = 0;
     this.flags = 0;
     this.trail = [];
     this.paint = [];
@@ -118,16 +124,24 @@ export class RoomPlayer {
     return !!a && a.activeUntil > now;
   }
 
+  /** Movement speed multiplier while disguised. */
+  get propSpeed() {
+    return this.disguise ? PROPS[this.disguise]?.move.speed ?? 1 : 1;
+  }
+
   get radius() {
+    if (this.disguise) return propCollider(this.disguise, this.dLook.s).radius;
     const r = SHAPES[this.look.shape].radius;
     const wideP = this.look.pose === 'lie' || this.look.pose === 'starfish' ? 1.6 : 1;
     return r * wideP;
   }
   get height() {
+    if (this.disguise) return propCollider(this.disguise, this.dLook.s).height;
     return SHAPES[this.look.shape].height * POSES[this.look.pose].heightFactor;
   }
   /** Collision height used for movement validation (shape-based, pose independent). */
   get bodyHeight() {
+    if (this.disguise) return propCollider(this.disguise, this.dLook.s).height;
     return SHAPES[this.look.shape].height;
   }
 
@@ -137,6 +151,8 @@ export class RoomPlayer {
       isHost: this.id === hostId, ready: this.ready, connected: this.connected, team: this.team, side: this.side,
       caught: this.caught, score: this.score, finds: this.finds, look: this.look,
       voice: { on: this.voiceOn, mic: this.micOn },
+      disguise: this.disguise,
+      dLook: this.disguise ? this.dLook : undefined,
     };
   }
 }

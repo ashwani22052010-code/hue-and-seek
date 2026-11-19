@@ -112,9 +112,9 @@ async function run() {
   await hider.page.getByRole('button', { name: /Brush/ }).first().click();
   await hider.page.getByRole('button', { name: /Color/ }).click();
   await hider.page.getByLabel('Hex colour').fill('#1d4ed8');
-  await hider.page.mouse.move(450, 300);
+  await hider.page.mouse.move(482, 262); // the (slim) torso in the paint camera
   await hider.page.mouse.down();
-  for (let i = 0; i < 12; i++) { await hider.page.mouse.move(450 + i * 5, 290 + i * 3); await sleep(20); }
+  for (let i = 0; i < 12; i++) { await hider.page.mouse.move(482 + i * 0.8, 262 + i * 4); await sleep(30); }
   await hider.page.mouse.up();
   // eyedropper on the floor
   await hider.page.getByRole('button', { name: /Eyedropper/ }).click();
@@ -127,10 +127,10 @@ async function run() {
   await hider.page.screenshot({ path: `${shots}/04-paint-studio.png` });
   await hider.page.getByRole('button', { name: /Done/ }).click();
   // walk to a hiding spot next to the kitchen opening (house map)
-  await hider.page.evaluate(() => window.__hueTest.walk([[-9, 0, -7.6], [0.6, 0, -7.6], [0.9, 0, -5.0]]));
+  await hider.page.evaluate(() => window.__hueTest.walk([[-4.6, 0, -6.0]]));
   await waitFor(() => hider.page.evaluate(() => !window.__hueTest.walking()), 45000, 'hider walk');
   const hp = await hider.page.evaluate(() => window.__hueTest.pos());
-  ok(Math.hypot(hp[0] - 0.9, hp[2] + 5) < 0.6, `hider walked to hiding spot [${hp.map((v) => v.toFixed(1))}]`);
+  ok(Math.hypot(hp[0] + 4.6, hp[2] + 6.0) < 0.6, `hider walked to hiding spot [${hp.map((v) => v.toFixed(1))}]`);
   await hider.page.getByLabel('Pose').click();
   await hider.page.getByRole('button', { name: /Crouch/ }).click();
   await sleep(300);
@@ -149,8 +149,8 @@ async function run() {
   ok(seekerOps >= 2, `hider's paint replicated to seeker at hunt start (${seekerOps} ops)`);
   const remote = await seeker.page.evaluate(() => { const room = window.__hueRoom(); const h = room.players.find((p) => p.team === 'hider'); return window.__hueNet.sampleRemote(h.id); });
   ok(remote && Math.hypot(remote.p[0] - hp[0], remote.p[2] - hp[2]) < 0.5, 'seeker renders hider at the synced position');
-  await seeker.page.evaluate(() => window.__hueTest.walk([[3.4, 0, -6.5], [2.6, 0, -5.2]]));
-  await waitFor(() => seeker.page.evaluate(() => !window.__hueTest.walking()), 45000, 'seeker walk');
+  await seeker.page.evaluate(() => window.__hueTest.walk([[4.5, 0, 3.3], [4, 0, 1.2], [5.8, 0, 0], [11.5, 0, 0], [11.5, 0, 1.2], [10.3, 0, 1.2], [6.1, 0, 1.2], [5, 0, 0.1], [1, 0, 0], [-0.6, 0, 0], [-3, 0, -2.6], [-3, 0, -5.6], [-3.4, 0, -6.0]]));
+  await waitFor(() => seeker.page.evaluate(() => !window.__hueTest.walking()), 120000, 'seeker walk');
   await seeker.page.evaluate(([x, z]) => window.__hueTest.aimAt(x, 0.35, z), [hp[0], hp[2]]);
   await sleep(400);
   await seeker.page.screenshot({ path: `${shots}/06-seeker-aims.png` });
@@ -190,7 +190,7 @@ async function run() {
   await waitFor(async () => (await M.page.locator('canvas').count()) > 0, 15000, 'mobile game');
   await waitFor(async () => /hide & paint|blindfolded/i.test(await text(M.page)), 40000, 'mobile prep');
   await sleep(1500);
-  const joystick = await M.page.locator('.rounded-full.border-4.border-white\\/40').count();
+  const joystick = await M.page.getByTestId('touch-layer').getByText('MOVE').count();
   const mText = await text(M.page);
   ok(joystick > 0 || mText.includes('blindfolded'), 'mobile shows touch joystick (or blindfold as seeker)');
   await M.page.screenshot({ path: `${shots}/10-mobile-game.png` });

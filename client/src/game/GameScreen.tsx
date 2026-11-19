@@ -15,6 +15,7 @@ import { installInput, onKey, requestLock, exitLock, input } from '../controls/i
 import { registry } from './registry';
 import { Spinner } from '../ui/kit';
 import { toggleMic } from '../ui/Voice';
+import { doRevert, doTransform, transformEnabled } from './transform';
 
 const mapCache = new Map<string, MapDef>();
 
@@ -80,6 +81,8 @@ export function GameScreen() {
       if (a) activateAbility(a.id);
     }
     if (code === 'KeyV' && s.voice.on) void toggleMic();
+    if (code === 'KeyR' && transformEnabled()) void doTransform();
+    if (code === 'KeyX' && transformEnabled()) void doRevert();
     if (code === 'KeyT') s.set({ quickMenu: s.quickMenu === 'chat' ? 'none' : 'chat' });
     if (code === 'KeyG') s.set({ quickMenu: s.quickMenu === 'emote' ? 'none' : 'emote' });
     if (code === 'KeyC' && me?.team === 'hider') s.set({ quickMenu: s.quickMenu === 'pose' ? 'none' : 'pose' });
@@ -102,13 +105,14 @@ export function GameScreen() {
   useEffect(() => () => { registry.characters.clear(); registry.extras.clear(); input.keys.clear(); }, []);
 
   const hi = quality === 'high';
+  const mid = quality === 'medium';
   return (
     <div ref={wrap} className="fixed inset-0 bg-black" onClick={onCanvasClick}>
       <Canvas
         shadows={hi}
         flat
-        dpr={hi ? [1, 1.75] : [0.7, 1.1]}
-        gl={{ antialias: hi, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
+        dpr={hi ? [1, 1.75] : mid ? [0.9, 1.35] : [0.65, 1]}
+        gl={{ antialias: hi || mid, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
         camera={{ fov: 62, near: 0.08, far: 220, position: [0, 6, 10] }}
         onCreated={({ gl }) => { gl.shadowMap.type = THREE.PCFSoftShadowMap; (window as unknown as { __hueRenderInfo: () => unknown }).__hueRenderInfo = () => ({ ...gl.info.render, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures }); }}
       >

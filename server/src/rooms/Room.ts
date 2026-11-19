@@ -1,10 +1,11 @@
 // A room: membership, host, lobby settings, ready system. Gameplay lives in game-engine/Match.
-import type { MapId, ModeId, RoomSettings, RoomState } from '@shared/types';
+import type { HideStyle, MapId, ModeId, RoomSettings, RoomState } from '@shared/types';
 import {
-  DEFAULT_SETTINGS, EMPTY_ROOM_TTL_MS, HUNT_TIME_OPTIONS, LOBBY_IDLE_TTL_MS, MAP_IDS, MAX_PLAYERS, MIN_PLAYERS,
+  DEFAULT_SETTINGS, HIDE_STYLE_IDS, EMPTY_ROOM_TTL_MS, HUNT_TIME_OPTIONS, LOBBY_IDLE_TTL_MS, MAP_IDS, MAX_PLAYERS, MIN_PLAYERS,
   MODE_IDS, PREP_TIME_OPTIONS, PUBLIC_AUTOSTART_MS, RECONNECT_GRACE_MS,
 } from '@shared/constants';
 import { RoomPlayer, type Identity } from './RoomPlayer';
+import type { RoomPlayer as RP } from './RoomPlayer';
 import { Match } from '../game-engine/Match';
 import { config } from '../config';
 
@@ -34,6 +35,7 @@ export class Room {
     this.hostId = host.id;
     if (isPublic) {
       this.settings.mapId = MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)];
+      this.settings.hideStyle = HIDE_STYLE_IDS[Math.floor(Math.random() * HIDE_STYLE_IDS.length)];
       this.settings.mode = Math.random() < 0.6 ? 'classic' : (['infection', 'chaos'] as ModeId[])[Math.floor(Math.random() * 2)];
     }
   }
@@ -61,8 +63,10 @@ export class Room {
     else this.emitAll('event', ev);
   }
 
-  state(): RoomState {
+  /** Room state as seen by `viewer`: seekers can't see hider disguises during preparation (anti-cheat). */
+  state(viewer?: RP): RoomState {
     const m = this.match;
+    const hide = !!viewer && !!m && (m.phase === 'assign' || m.phase === 'prep') && (viewer.team === 'seeker' || !viewer.inMatch);
     return {
       code: this.code,
       isPublic: this.isPublic,
@@ -74,7 +78,11 @@ export class Room {
       round: m?.round ?? 0,
       totalRounds: m?.totalRounds ?? 0,
       teamScores: m?.teamScores(),
-      players: [...this.players.values()].map((p) => p.toPublic(this.hostId)),
+      players: [...this.players.values()].map((p) => {
+        const pub = p.toPublic(this.hostId);
+        if (hide && p.team === 'hider') { pub.disguise = null; pub.dLook = undefined; }
+        return pub;
+      }),
       results: m?.results ?? null,
       chaos: m?.chaos ?? null,
       interactables: m?.interactables ?? {},
@@ -89,7 +97,7 @@ export class Room {
   flush() {
     if (!this.dirty) return;
     this.dirty = false;
-    this.emitAll('room:state', this.state());
+    for (const p of this.players.values()) this.emitPlayer(p, 'room:state', this.state(p));
   }
 
   // ---------- membership ----------
@@ -149,6 +157,10 @@ export class Room {
     if (by !== this.hostId) return 'Only the host can change settings';
     if (this.phase !== 'lobby' && this.phase !== 'results') return 'Settings can only change in the lobby';
     const s = { ...this.settings };
+    if (patch.hideStyle !== undefined) {
+      if (!HIDE_STYLE_IDS.includes(patch.hideStyle as HideStyle)) return 'Unknown hiding style';
+      s.hideStyle = patch.hideStyle;
+    }
     if (patch.mapId !== undefined) {
       if (!MAP_IDS.includes(patch.mapId as MapId)) return 'Unknown map';
       s.mapId = patch.mapId;

@@ -6,7 +6,9 @@ export type FxEvent =
   | { kind: 'poke'; p: Vec3; hit: boolean }
   | { kind: 'decoy'; id: string }
   | { kind: 'emote'; id: string; emote: string }
-  | { kind: 'paint'; p: Vec3; color: string };
+  | { kind: 'paint'; p: Vec3; color: string }
+  | { kind: 'poof'; p: Vec3 }
+  | { kind: 'caughtGhost'; id: string; p: Vec3; yaw: number };
 
 type Fn = (e: FxEvent) => void;
 const subs = new Set<Fn>();

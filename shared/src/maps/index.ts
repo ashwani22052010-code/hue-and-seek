@@ -2,8 +2,10 @@
 import type { MapId, Vec3 } from '../types';
 import type { MapDef, PropDef } from './types';
 import { buildWorld, type Collider, type CollisionWorld } from '../game-rules/physics';
+import { PROPS } from '../props/registry';
+import type { ItemDef } from './types';
 
-export type { MapDef, PropDef, InteractableDef, LightDef } from './types';
+export type { MapDef, PropDef, InteractableDef, LightDef, ItemDef } from './types';
 
 export const MAP_LOADERS: Record<MapId, () => Promise<MapDef>> = {
   house: () => import('./house').then((m) => m.buildHouse()),
@@ -11,6 +13,8 @@ export const MAP_LOADERS: Record<MapId, () => Promise<MapDef>> = {
   school: () => import('./school').then((m) => m.buildSchool()),
   toyworld: () => import('./toyworld').then((m) => m.buildToyWorld()),
   factory: () => import('./factory').then((m) => m.buildFactory()),
+  office: () => import('./office').then((m) => m.buildOffice()),
+  restaurant: () => import('./restaurant').then((m) => m.buildRestaurant()),
 };
 
 function rotate(v: Vec3, rot: Vec3): Vec3 {
@@ -43,12 +47,28 @@ export function propAABB(p: PropDef): { min: Vec3; max: Vec3 } {
   return { min, max };
 }
 
+/** World-space bounding box of a placed item. */
+export function itemAABB(it: ItemDef): { min: Vec3; max: Vec3 } {
+  const t = PROPS[it.t];
+  const s = it.s ?? 1;
+  const [w, h, d] = t ? t.size : [0.3, 0.3, 0.3];
+  const c = Math.abs(Math.cos(it.r)), sn = Math.abs(Math.sin(it.r));
+  const hx = ((w * c + d * sn) / 2) * s, hz = ((w * sn + d * c) / 2) * s;
+  return { min: [it.p[0] - hx, it.p[1], it.p[2] - hz], max: [it.p[0] + hx, it.p[1] + h * s, it.p[2] + hz] };
+}
+
 export function mapColliders(def: MapDef): Collider[] {
   const out: Collider[] = [];
   for (const p of def.props) {
     if (p.solid === false) continue;
     const bb = propAABB(p);
     out.push({ min: bb.min, max: bb.max, group: p.group });
+  }
+  for (const it of def.items ?? []) {
+    if (!PROPS[it.t]?.solid) continue;
+    const bb = itemAABB(it);
+    // shrink slightly so players can squeeze between furniture
+    out.push({ min: [bb.min[0] + 0.03, bb.min[1], bb.min[2] + 0.03], max: [bb.max[0] - 0.03, bb.max[1], bb.max[2] - 0.03] });
   }
   return out;
 }

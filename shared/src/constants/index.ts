@@ -1,5 +1,5 @@
 import type {
-  AbilityId, Cosmetics, MapId, ModeId, PatternId, PoseId, RegionId, ShapeId, Team,
+  HideStyle, AbilityId, Cosmetics, MapId, ModeId, PatternId, PoseId, RegionId, ShapeId, Team,
 } from '../types';
 
 export const GAME_NAME = 'Hue & Seek';
@@ -24,6 +24,7 @@ export const PREP_TIME_OPTIONS = [30, 40, 45, 60];
 export const HUNT_TIME_OPTIONS = [90, 120, 180, 240, 300];
 export const DEFAULT_SETTINGS = {
   mapId: 'house' as MapId,
+  hideStyle: 'paint' as HideStyle,
   mode: 'classic' as ModeId,
   prepTime: 40,
   huntTime: 180,
@@ -43,11 +44,11 @@ export const PHYS = {
 };
 
 export const SHAPES: Record<ShapeId, { label: string; scale: [number, number, number]; radius: number; height: number }> = {
-  normal: { label: 'Normal', scale: [1, 1, 1], radius: 0.36, height: 1.05 },
-  short: { label: 'Short', scale: [1.05, 0.68, 1.05], radius: 0.38, height: 0.72 },
-  tall: { label: 'Tall', scale: [0.9, 1.38, 0.9], radius: 0.33, height: 1.45 },
-  wide: { label: 'Wide', scale: [1.42, 0.9, 1.25], radius: 0.5, height: 0.95 },
-  slim: { label: 'Slim', scale: [0.68, 1.12, 0.68], radius: 0.25, height: 1.18 },
+  normal: { label: 'Normal', scale: [1, 1, 1], radius: 0.27, height: 1.34 },
+  short: { label: 'Short', scale: [1.06, 0.74, 1.06], radius: 0.28, height: 1.0 },
+  tall: { label: 'Tall', scale: [0.94, 1.24, 0.94], radius: 0.26, height: 1.66 },
+  wide: { label: 'Wide', scale: [1.45, 0.95, 1.3], radius: 0.38, height: 1.28 },
+  slim: { label: 'Slim', scale: [0.76, 1.08, 0.76], radius: 0.21, height: 1.45 },
 };
 export const SHAPE_IDS = Object.keys(SHAPES) as ShapeId[];
 
@@ -66,13 +67,12 @@ export const POSE_IDS = Object.keys(POSES) as PoseId[];
 
 /** Character paint atlas layout: UV rects [u0, v0, u1, v1] (v up). */
 export const REGIONS: Record<RegionId, { label: string; rect: [number, number, number, number] }> = {
-  body: { label: 'Body', rect: [0, 0.375, 1, 1] },
-  armL: { label: 'Left Arm', rect: [0, 0.1875, 0.25, 0.375] },
-  armR: { label: 'Right Arm', rect: [0.25, 0.1875, 0.5, 0.375] },
-  footL: { label: 'Left Foot', rect: [0.5, 0.1875, 0.75, 0.375] },
-  footR: { label: 'Right Foot', rect: [0.75, 0.1875, 1, 0.375] },
-  tail: { label: 'Tail', rect: [0, 0, 0.5, 0.1875] },
-  crest: { label: 'Crest', rect: [0.5, 0, 1, 0.1875] },
+  body: { label: 'Body', rect: [0, 0.5, 0.5, 1] },
+  head: { label: 'Head', rect: [0.5, 0.5, 1, 1] },
+  armL: { label: 'Left Arm', rect: [0, 0.25, 0.25, 0.5] },
+  armR: { label: 'Right Arm', rect: [0.25, 0.25, 0.5, 0.5] },
+  legL: { label: 'Left Leg', rect: [0.5, 0.25, 0.75, 0.5] },
+  legR: { label: 'Right Leg', rect: [0.75, 0.25, 1, 0.5] },
 };
 export const REGION_IDS = Object.keys(REGIONS) as RegionId[];
 
@@ -130,6 +130,21 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
 export const HIDER_ABILITIES: AbilityId[] = ['decoy', 'freeze', 'colorshift', 'silent', 'quickdisguise'];
 export const SEEKER_ABILITIES: AbilityId[] = ['scanner', 'footprints', 'sound', 'speed'];
 export const SCANNER_RANGE = 14;
+
+// ---------- Hiding styles ----------
+export const HIDE_STYLES: Record<HideStyle, { name: string; icon: string; tagline: string; description: string; color: string }> = {
+  paint: { name: 'Color Camouflage', icon: '🎨', color: '#8b5cf6', tagline: 'Paint yourself and blend into the environment.', description: 'Sample colours and textures from the world, paint your Hueling and freeze in the perfect spot.' },
+  props: { name: 'Object Transformation', icon: '🫖', color: '#0ea5e9', tagline: 'Turn into everyday objects and hide in plain sight.', description: 'Aim at a jug, chair, lamp or toy and press TRANSFORM. Move around as the object - just don\'t act suspicious!' },
+  hybrid: { name: 'Hybrid Chaos', icon: '🌀', color: '#ec4899', tagline: 'Paint AND transform - switch any time.', description: 'Hiders can paint themselves and transform into objects. Seekers must see through both kinds of camouflage.' },
+};
+export const HIDE_STYLE_IDS = Object.keys(HIDE_STYLES) as HideStyle[];
+export const canPaintStyle = (s: HideStyle) => s !== 'props';
+export const canTransformStyle = (s: HideStyle) => s !== 'paint';
+
+// ---------- Object transformation ----------
+export const TRANSFORM_RANGE = 4.5; // metres from the hider's eyes to the object
+export const TRANSFORM_COOLDOWN_PREP_MS = 1200;
+export const TRANSFORM_COOLDOWN_HUNT_MS = 6000;
 export const SOUND_RANGE = 26;
 
 // ---------- Modes ----------
@@ -154,11 +169,13 @@ export const MODE_IDS = Object.keys(MODES) as ModeId[];
 
 // ---------- Maps meta (geometry lives in /maps) ----------
 export const MAP_META: Record<MapId, { name: string; description: string; icon: string; colors: [string, string] }> = {
-  house: { name: 'Cozy House', description: 'Living room, kitchen, bedroom and a loft up the stairs.', icon: '🏠', colors: ['#f97316', '#fde68a'] },
+  house: { name: 'Cozy House', description: 'Two storeys: living room, kitchen, bedroom, bathroom, storage and an upstairs kids room.', icon: '🏠', colors: ['#f97316', '#fde68a'] },
   supermarket: { name: 'MegaMart', description: 'Aisles of snacks, humming fridges and a cluttered stockroom.', icon: '🛒', colors: ['#06b6d4', '#a7f3d0'] },
   school: { name: 'Sunnyvale School', description: 'Classrooms, a library, long hallways and a playground.', icon: '🏫', colors: ['#eab308', '#93c5fd'] },
   toyworld: { name: 'Toy World', description: 'Giant blocks, a huge teddy, ball pit and crayon forest.', icon: '🧸', colors: ['#ec4899', '#c4b5fd'] },
   factory: { name: 'Rust Factory', description: 'Dim machinery halls, pipes, catwalks and storage rooms.', icon: '🏭', colors: ['#64748b', '#f59e0b'] },
+  office: { name: 'Skyline Office', description: 'Open-plan desks, meeting rooms, a break room and a server closet.', icon: '🏢', colors: ['#0f766e', '#a5f3fc'] },
+  restaurant: { name: 'Bella Bistro', description: 'Dining hall, bar, busy kitchen, pantry and cold storage.', icon: '🍝', colors: ['#b91c1c', '#fde68a'] },
 };
 export const MAP_IDS = Object.keys(MAP_META) as MapId[];
 
